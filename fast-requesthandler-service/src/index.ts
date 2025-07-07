@@ -1,102 +1,102 @@
-import express from 'express';
-import cors from 'cors';
-import helmet from 'helmet';
-import morgan from 'morgan';
-import dotenv from 'dotenv';
-import { v4 as uuidv4 } from 'uuid';
+import * as grpc from '@grpc/grpc-js';
+import * as protoLoader from '@grpc/proto-loader';
+import { config } from 'dotenv';
+import path from 'path';
+import { PacsHandler } from './grpc/handlers/pacsHandler';
+import { SpannerClient } from './database/spanner';
+import defaultConfig from './config/default';
 
 // Load environment variables
-dotenv.config();
+config();
 
-const app = express();
-const PORT = process.env.PORT || 3001;
-
-// Middleware
-app.use(helmet());
-app.use(cors());
-app.use(morgan('combined'));
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-
-// Request ID middleware
-app.use((req, res, next) => {
-  req.headers['x-request-id'] = req.headers['x-request-id'] || uuidv4();
-  res.setHeader('x-request-id', req.headers['x-request-id']);
-  next();
+// Load proto definition
+const PROTO_PATH = path.join(__dirname, '../proto/pacs_handler.proto');
+const packageDefinition = protoLoader.loadSync(PROTO_PATH, {
+  keepCase: true,
+  longs: String,
+  enums: String,
+  defaults: true,
+  oneofs: true,
 });
 
-// Health check endpoint
-app.get('/health', (req, res) => {
-  res.status(200).json({
-    service: 'fast-requesthandler-service',
-    status: 'healthy',
-    timestamp: new Date().toISOString(),
-    requestId: req.headers['x-request-id']
-  });
-});
+const pacsProto = grpc.loadPackageDefinition(packageDefinition) as any;
 
-// Main request handling endpoint
-app.post('/api/v1/requests', (req, res) => {
-  const requestId = req.headers['x-request-id'];
-  
+async function startServer() {
+  // Initialize database connection
+  const spannerClient = new SpannerClient(defaultConfig.spanner);
   try {
-    // Basic request validation
-    if (!req.body || Object.keys(req.body).length === 0) {
-      return res.status(400).json({
-        error: 'Invalid request body',
-        requestId,
-        timestamp: new Date().toISOString()
-      });
-    }
-
-    // Simulate request processing
-    const processedRequest = {
-      requestId,
-      originalRequest: req.body,
-      processedAt: new Date().toISOString(),
-      status: 'processed',
-      service: 'fast-requesthandler-service'
-    };
-
-    res.status(200).json({
-      success: true,
-      data: processedRequest,
-      requestId,
-      timestamp: new Date().toISOString()
-    });
+    await spannerClient.initialize();
   } catch (error) {
-    console.error('Error processing request:', error);
-    res.status(500).json({
-      error: 'Internal server error',
-      requestId,
-      timestamp: new Date().toISOString()
-    });
+    console.warn('⚠️  Database initialization failed, continuing without database:', error);
   }
-});
 
-// Error handling middleware
-app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
-  console.error('Unhandled error:', err);
-  res.status(500).json({
-    error: 'Internal server error',
-    requestId: req.headers['x-request-id'],
-    timestamp: new Date().toISOString()
+  // Initialize handlers
+  const pacsHandler = new PacsHandler(spannerClient);
+
+  // Create gRPC server
+  const server = new grpc.Server();
+
+  // Add services
+  server.addService(pacsProto.gpp.g3.requesthandler.PacsHandler.service, {
+    ProcessPacsMessage: pacsHandler.processPacsMessage.bind(pacsHandler),
+    GetMessageStatus: pacsHandler.getMessageStatus.bind(pacsHandler),
+    HealthCheck: pacsHandler.healthCheck.bind(pacsHandler),
+    GetAllMessages: pacsHandler.getAllMessages.bind(pacsHandler),
+    ClearMockStorage: pacsHandler.clearMockStorage.bind(pacsHandler),
+    GetMockStorageSize: pacsHandler.getMockStorageSize.bind(pacsHandler),
   });
-});
 
-// 404 handler
-app.use('*', (req, res) => {
-  res.status(404).json({
-    error: 'Endpoint not found',
-    requestId: req.headers['x-request-id'],
-    timestamp: new Date().toISOString()
+  // Start server
+  const port = defaultConfig.grpc.port;
+  server.bindAsync(
+    `0.0.0.0:${port}`,
+    grpc.ServerCredentials.createInsecure(),
+    (error, port) => {
+      if (error) {
+        console.error('🚨 Failed to start gRPC server:', error);
+        process.exit(1);
+      }
+      
+      console.log(`🚀 fast-requesthandler-service gRPC server started on port ${port}`);
+      console.log(`🏥 Health check: grpc://localhost:${port}/HealthCheck`);
+      console.log(`📊 PACS Handler: grpc://localhost:${port}/ProcessPacsMessage`);
+      console.log(`🔍 Message Status: grpc://localhost:${port}/GetMessageStatus`);
+      console.log(`🌏 Singapore market ready - SGD currency, SG country codes`);
+      
+      server.start();
+    }
+  );
+
+  // Graceful shutdown
+  process.on('SIGTERM', () => {
+    console.log('🛑 Received SIGTERM, shutting down gracefully...');
+    server.tryShutdown((error) => {
+      if (error) {
+        console.error('❌ Error during shutdown:', error);
+        process.exit(1);
+      }
+      console.log('✅ Server shutdown complete');
+      process.exit(0);
+    });
   });
+
+  process.on('SIGINT', () => {
+    console.log('🛑 Received SIGINT, shutting down gracefully...');
+    server.tryShutdown((error) => {
+      if (error) {
+        console.error('❌ Error during shutdown:', error);
+        process.exit(1);
+      }
+      console.log('✅ Server shutdown complete');
+      process.exit(0);
+    });
+  });
+}
+
+// Start the server
+startServer().catch((error) => {
+  console.error('❌ Failed to start server:', error);
+  process.exit(1);
 });
 
-// Start server
-app.listen(PORT, () => {
-  console.log(`🚀 fast-requesthandler-service is running on port ${PORT}`);
-  console.log(`📊 Health check: http://localhost:${PORT}/health`);
-});
-
-export default app; 
+export default startServer; 

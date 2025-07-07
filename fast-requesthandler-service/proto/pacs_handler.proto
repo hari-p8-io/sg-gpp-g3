@@ -1,0 +1,105 @@
+syntax = "proto3";
+
+package gpp.g3.requesthandler;
+
+service PacsHandler {
+  // Process a PACS message (008, 007, or 003)
+  rpc ProcessPacsMessage(PacsMessageRequest) returns (PacsMessageResponse);
+  
+  // Get the status of a previously processed message
+  rpc GetMessageStatus(MessageStatusRequest) returns (MessageStatusResponse);
+  
+  // Health check for the service
+  rpc HealthCheck(HealthCheckRequest) returns (HealthCheckResponse);
+  
+  // Get all messages from mock storage (for testing)
+  rpc GetAllMessages(GetAllMessagesRequest) returns (GetAllMessagesResponse);
+  
+  // Clear mock storage (for testing)
+  rpc ClearMockStorage(ClearMockStorageRequest) returns (ClearMockStorageResponse);
+  
+  // Get mock storage size (for testing)
+  rpc GetMockStorageSize(GetMockStorageSizeRequest) returns (GetMockStorageSizeResponse);
+}
+
+message PacsMessageRequest {
+  string message_type = 1;  // PACS008, PACS007, PACS003
+  string xml_payload = 2;   // The raw XML content
+  map<string, string> metadata = 3; // Additional metadata (e.g., source system, timestamp)
+}
+
+message PacsMessageResponse {
+  string message_id = 1;    // Generated 36-char UUID
+  string puid = 2;          // Generated 16-char ID starting with "G3I"
+  bool success = 3;         // Whether the processing was successful
+  string error_message = 4; // Error details if success = false
+  int64 timestamp = 5;      // Processing timestamp (Unix epoch)
+  string status = 6;        // Current status: RECEIVED, VALIDATED, ENRICHED, FAILED
+}
+
+message MessageStatusRequest {
+  oneof identifier {
+    string message_id = 1;  // Query by UUID
+    string puid = 2;        // Query by G3I identifier
+  }
+}
+
+message MessageStatusResponse {
+  string message_id = 1;    // The UUID
+  string puid = 2;          // The G3I identifier
+  string status = 3;        // Current status
+  int64 created_at = 4;     // When the message was first received
+  int64 processed_at = 5;   // When processing completed (0 if still processing)
+  string message_type = 6;  // PACS message type
+}
+
+message HealthCheckRequest {
+  string service = 1;       // Service name for health check
+}
+
+message HealthCheckResponse {
+  enum ServingStatus {
+    UNKNOWN = 0;
+    SERVING = 1;
+    NOT_SERVING = 2;
+    SERVICE_UNKNOWN = 3;
+  }
+  ServingStatus status = 1;
+  string message = 2;       // Additional health information
+}
+
+// Database inspection messages (for testing)
+message GetAllMessagesRequest {
+  // Empty - returns all messages
+}
+
+message GetAllMessagesResponse {
+  repeated SafeStrRecord messages = 1;
+}
+
+message ClearMockStorageRequest {
+  // Empty - clears all mock storage
+}
+
+message ClearMockStorageResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message GetMockStorageSizeRequest {
+  // Empty - returns size of mock storage
+}
+
+message GetMockStorageSizeResponse {
+  int32 size = 1;
+}
+
+message SafeStrRecord {
+  string message_id = 1;
+  string puid = 2;
+  string message_type = 3;
+  string payload = 4;
+  int64 created_at = 5;
+  int64 processed_at = 6;
+  string status = 7;
+} 
