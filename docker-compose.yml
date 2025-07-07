@@ -1,0 +1,128 @@
+version: '3.8'
+
+services:
+  # TypeScript Services
+  fast-requesthandler-service:
+    build:
+      context: ./fast-requesthandler-service
+      dockerfile: Dockerfile
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=development
+      - PORT=3001
+    volumes:
+      - ./fast-requesthandler-service:/app
+      - /app/node_modules
+    networks:
+      - gpp-g3-network
+
+  fast-enrichment-service:
+    build:
+      context: ./fast-enrichment-service
+      dockerfile: Dockerfile
+    ports:
+      - "3002:3002"
+    environment:
+      - NODE_ENV=development
+      - PORT=3002
+    volumes:
+      - ./fast-enrichment-service:/app
+      - /app/node_modules
+    networks:
+      - gpp-g3-network
+
+  fast-validation-service:
+    build:
+      context: ./fast-validation-service
+      dockerfile: Dockerfile
+    ports:
+      - "3003:3003"
+    environment:
+      - NODE_ENV=development
+      - PORT=3003
+    volumes:
+      - ./fast-validation-service:/app
+      - /app/node_modules
+    networks:
+      - gpp-g3-network
+
+  fast-orchestrator-service:
+    build:
+      context: ./fast-orchestrator-service
+      dockerfile: Dockerfile
+    ports:
+      - "3004:3004"
+    environment:
+      - NODE_ENV=development
+      - PORT=3004
+      - REQUEST_HANDLER_URL=http://fast-requesthandler-service:3001
+      - ENRICHMENT_URL=http://fast-enrichment-service:3002
+      - VALIDATION_URL=http://fast-validation-service:3003
+      - LIMIT_CHECK_URL=http://fast-limitcheck-service:8001
+      - ACCOUNTING_URL=http://fast-accounting-service:8002
+      - VAM_MEDIATION_URL=http://fast-vammediation-service:8003
+      - MDZ_MEDIATION_URL=http://fast-mdzmediation-service:8004
+    volumes:
+      - ./fast-orchestrator-service:/app
+      - /app/node_modules
+    networks:
+      - gpp-g3-network
+    depends_on:
+      - fast-requesthandler-service
+      - fast-enrichment-service
+      - fast-validation-service
+
+  # Java Services (Shell services - would need Dockerfiles when implemented)
+  # Uncomment these when Java services have actual implementations
+  
+  # fast-limitcheck-service:
+  #   build:
+  #     context: ./fast-limitcheck-service
+  #     dockerfile: Dockerfile
+  #   ports:
+  #     - "8001:8001"
+  #   environment:
+  #     - SPRING_PROFILES_ACTIVE=docker
+  #   networks:
+  #     - gpp-g3-network
+
+  # fast-accounting-service:
+  #   build:
+  #     context: ./fast-accounting-service
+  #     dockerfile: Dockerfile
+  #   ports:
+  #     - "8002:8002"
+  #   environment:
+  #     - SPRING_PROFILES_ACTIVE=docker
+  #   networks:
+  #     - gpp-g3-network
+
+  # fast-vammediation-service:
+  #   build:
+  #     context: ./fast-vammediation-service
+  #     dockerfile: Dockerfile
+  #   ports:
+  #     - "8003:8003"
+  #   environment:
+  #     - SPRING_PROFILES_ACTIVE=docker
+  #   networks:
+  #     - gpp-g3-network
+
+  # fast-mdzmediation-service:
+  #   build:
+  #     context: ./fast-mdzmediation-service
+  #     dockerfile: Dockerfile
+  #   ports:
+  #     - "8004:8004"
+  #   environment:
+  #     - SPRING_PROFILES_ACTIVE=docker
+  #   networks:
+  #     - gpp-g3-network
+
+networks:
+  gpp-g3-network:
+    driver: bridge
+
+volumes:
+  node_modules_cache: 

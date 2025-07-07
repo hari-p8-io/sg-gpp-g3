@@ -1,0 +1,37 @@
+{
+  "name": "gpp-g3-monorepo",
+  "version": "1.0.0",
+  "description": "GPP G3 Initiative - Monorepo for microservices",
+  "private": true,
+  "workspaces": [
+    "fast-requesthandler-service",
+    "fast-enrichment-service",
+    "fast-validation-service",
+    "fast-orchestrator-service"
+  ],
+  "scripts": {
+    "install:ts-services": "npm install && npm run bootstrap",
+    "bootstrap": "npm install --workspaces",
+    "build": "npm run build --workspaces",
+    "test": "npm run test --workspaces",
+    "dev": "npm run dev --workspaces",
+    "lint": "npm run lint --workspaces",
+    "clean": "npm run clean --workspaces && rm -rf node_modules",
+    "docker:build": "docker-compose -f shared/docker/docker-compose.yml build",
+    "docker:up": "docker-compose -f shared/docker/docker-compose.yml up",
+    "docker:down": "docker-compose -f shared/docker/docker-compose.yml down",
+    "java:build": "mvn clean install",
+    "java:test": "mvn test"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0",
+    "concurrently": "^8.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  },
+  "author": "GPP G3 Team",
+  "license": "UNLICENSED"
+} 
