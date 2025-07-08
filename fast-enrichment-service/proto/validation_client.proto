@@ -1,0 +1,48 @@
+syntax = "proto3";
+
+package gpp.g3.validation;
+
+import "enrichment_service.proto";
+
+service ValidationService {
+  // Validate enriched PACS message
+  rpc ValidatePacsMessage(ValidationRequest) returns (ValidationResponse);
+  
+  // Health check
+  rpc HealthCheck(HealthCheckRequest) returns (HealthCheckResponse);
+}
+
+message ValidationRequest {
+  string message_id = 1;
+  string puid = 2;
+  string message_type = 3;
+  string enriched_xml_payload = 4;
+  gpp.g3.enrichment.EnrichmentData enrichment_data = 5; // Enrichment data from account lookup
+  map<string, string> metadata = 6;
+  int64 timestamp = 7;
+}
+
+message ValidationResponse {
+  string message_id = 1;
+  string puid = 2;
+  bool success = 3;
+  string error_message = 4;
+  string validated_payload = 5;
+  int64 processed_at = 6;
+  string next_service = 7; // fast-orchestrator-service (via Kafka)
+}
+
+message HealthCheckRequest {
+  string service = 1;
+}
+
+message HealthCheckResponse {
+  enum ServingStatus {
+    UNKNOWN = 0;
+    SERVING = 1;
+    NOT_SERVING = 2;
+    SERVICE_UNKNOWN = 3;
+  }
+  ServingStatus status = 1;
+  string message = 2;
+} 

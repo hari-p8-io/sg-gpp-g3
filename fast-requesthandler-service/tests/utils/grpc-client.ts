@@ -34,6 +34,7 @@ interface MessageStatusResponse {
 interface HealthCheckResponse {
   status: number | string;
   timestamp: number;
+  message?: string;
 }
 
 interface SafeStrRecord {
@@ -70,19 +71,37 @@ class GrpcClientHelper {
     );
   }
 
+  async waitForServiceReady(timeoutMs: number = 30000): Promise<void> {
+    const start = Date.now();
+    
+    while (Date.now() - start < timeoutMs) {
+      try {
+        await this.healthCheck();
+        return;
+      } catch (error) {
+        // Wait 1 second before retrying
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+    }
+    
+    throw new Error(`Service not ready after ${timeoutMs}ms`);
+  }
+
   async processPacsMessage(
-    messageType: string,
-    xmlPayload: string,
-    metadata: Record<string, string> = {}
+    request: {
+      message_type: string;
+      xml_payload: string;
+      metadata?: Record<string, string>;
+    }
   ): Promise<ProcessPacsResponse> {
     return new Promise((resolve, reject) => {
-      const request = {
-        message_type: messageType,
-        xml_payload: xmlPayload,
-        metadata: metadata,
+      const grpcRequest = {
+        message_type: request.message_type,
+        xml_payload: request.xml_payload,
+        metadata: request.metadata || {},
       };
 
-      this.client.ProcessPacsMessage(request, (error, response) => {
+      this.client.ProcessPacsMessage(grpcRequest, (error, response) => {
         if (error) {
           reject(error);
         } else {
@@ -293,6 +312,51 @@ class GrpcClientHelper {
       errors,
     };
   }
+}
+
+// Export factory function
+export function createGrpcClient(serverUrl: string = 'localhost:50051'): GrpcClientHelper {
+  return new GrpcClientHelper(serverUrl);
+}
+
+// Export utility functions
+export function loadFixture(filename: string): string {
+  const filePath = path.join(__dirname, '../fixtures', filename);
+  
+  if (!fs.existsSync(filePath)) {
+    throw new Error(`Fixture file not found: ${filePath}`);
+  }
+  
+  return fs.readFileSync(filePath, 'utf8');
+}
+
+export function isValidUUID(uuid: string): boolean {
+  return GrpcClientHelper.isValidUUID(uuid);
+}
+
+export function isValidPUID(puid: string): boolean {
+  return GrpcClientHelper.isValidPUID(puid);
+}
+
+export function validateSingaporeElements(xmlPayload: string): {
+  hasSGDCurrency: boolean;
+  hasSGCountry: boolean;
+  hasSingaporePostalCode: boolean;
+  hasSingaporeTimezone: boolean;
+  warnings: string[];
+} {
+  const validation = GrpcClientHelper.validateSingaporeFields(xmlPayload);
+  
+  // Check for Singapore timezone
+  const hasSingaporeTimezone = xmlPayload.includes('+08:00') || xmlPayload.includes('Asia/Singapore');
+  
+  return {
+    hasSGDCurrency: validation.hasValidCurrency,
+    hasSGCountry: validation.hasValidCountry,
+    hasSingaporePostalCode: validation.hasValidPostalCode,
+    hasSingaporeTimezone,
+    warnings: validation.warnings,
+  };
 }
 
 export default GrpcClientHelper; 

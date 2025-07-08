@@ -1,0 +1,93 @@
+syntax = "proto3";
+
+package gpp.g3.enrichment;
+
+service EnrichmentService {
+  // Enrich a PACS message with account lookup data
+  rpc EnrichPacsMessage(EnrichmentRequest) returns (EnrichmentResponse);
+  
+  // Health check for the enrichment service
+  rpc HealthCheck(HealthCheckRequest) returns (HealthCheckResponse);
+}
+
+message EnrichmentRequest {
+  string message_id = 1;          // UUID from request handler
+  string puid = 2;                // G3I identifier
+  string message_type = 3;        // PACS008, PACS007, PACS003
+  string xml_payload = 4;         // The validated XML payload
+  map<string, string> metadata = 5; // Additional context data
+  int64 timestamp = 6;            // Original processing timestamp
+}
+
+message EnrichmentResponse {
+  string message_id = 1;               // Echo back the UUID
+  string puid = 2;                     // Echo back the G3I identifier
+  bool success = 3;                    // Whether enrichment was successful
+  string enriched_payload = 4;         // The enriched XML payload
+  string error_message = 5;            // Error details if success = false
+  EnrichmentData enrichment_data = 6;  // Enrichment data from account lookup
+  int64 processed_at = 7;              // When enrichment completed
+  string next_service = 8;             // Next service in pipeline (fast-validation-service)
+}
+
+message EnrichmentData {
+  string received_acct_id = 1;         // Original CdtrAcct ID
+  int32 lookup_status_code = 2;        // 200 for success
+  string lookup_status_desc = 3;       // Success description
+  string normalized_acct_id = 4;       // Normalized account ID
+  string matched_acct_id = 5;          // Matched account ID
+  string partial_match = 6;            // Y or N
+  string is_physical = 7;              // Y or N
+  PhysicalAccountInfo physical_acct_info = 8; // Complex account information
+}
+
+message PhysicalAccountInfo {
+  string acct_id = 1;                  // Account ID
+  string acct_sys = 2;                 // Account system (MDZ)
+  string acct_group = 3;               // Account group (SGB)
+  string country = 4;                  // Country (SG)
+  string branch_id = 5;                // Branch ID (nullable)
+  AccountAttributes acct_attributes = 6;
+  AccountOpsAttributes acct_ops_attributes = 7;
+  string bicfi = 8;                    // Bank identifier (ANZBSG3MXXX)
+  string currency_code = 9;            // Currency (SGD)
+}
+
+message AccountAttributes {
+  string acct_type = 1;                // Account type (Physical)
+  string acct_category = 2;            // Account category
+  string acct_purpose = 3;             // Account purpose
+}
+
+message AccountOpsAttributes {
+  string is_active = 1;                // Yes/No
+  string acct_status = 2;              // Active status
+  string open_date = 3;                // Account opening date
+  string expiry_date = 4;              // Future date in dd/mm/yyyy
+  Restraints restraints = 5;           // Account restraints
+}
+
+message Restraints {
+  string stop_all = 1;                 // N
+  string stop_debits = 2;              // N
+  string stop_credits = 3;             // N
+  string stop_atm = 4;                 // N
+  string stop_eft_pos = 5;             // N
+  string stop_unknown = 6;             // N
+  string warnings = 7;                 // None
+}
+
+message HealthCheckRequest {
+  string service = 1;
+}
+
+message HealthCheckResponse {
+  enum ServingStatus {
+    UNKNOWN = 0;
+    SERVING = 1;
+    NOT_SERVING = 2;
+    SERVICE_UNKNOWN = 3;
+  }
+  ServingStatus status = 1;
+  string message = 2;
+} 
