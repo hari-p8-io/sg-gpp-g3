@@ -142,7 +142,7 @@ test.describe('Fast Validation Service', () => {
     expect((response as any).message).toContain('healthy');
   });
 
-  test.skip('should validate SGD currency and SG country successfully', async () => {
+  test.skip('should validate market currency and country successfully', async () => {
     const request = {
       message_id: 'TEST_MSG_001',
       puid: 'TEST_PUID_001',
@@ -177,7 +177,7 @@ test.describe('Fast Validation Service', () => {
     expect(res.next_service).toBe('fast-orchestrator-service');
   });
 
-  test.skip('should reject invalid currency (USD instead of SGD)', async () => {
+  test.skip('should reject invalid currency for market', async () => {
     const request = {
       message_id: 'TEST_MSG_002',
       puid: 'TEST_PUID_002',

@@ -29,12 +29,14 @@ export class EnrichmentGrpcServer {
     const enrichmentProto = grpc.loadPackageDefinition(enrichmentPackageDefinition) as any;
 
     // Add enrichment service
+    const serviceImplementation = {
+      EnrichMessage: this.enrichmentHandler.enrichMessage.bind(this.enrichmentHandler),
+      HealthCheck: this.enrichmentHandler.healthCheck.bind(this.enrichmentHandler)
+    };
+
     this.server.addService(
       enrichmentProto.gpp.g3.enrichment.EnrichmentService.service,
-      {
-        EnrichPacsMessage: this.enrichmentHandler.enrichPacsMessage.bind(this.enrichmentHandler),
-        HealthCheck: this.enrichmentHandler.healthCheck.bind(this.enrichmentHandler),
-      }
+      serviceImplementation
     );
   }
 

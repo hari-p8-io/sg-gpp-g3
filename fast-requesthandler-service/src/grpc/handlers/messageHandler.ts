@@ -3,12 +3,12 @@ import { SpannerClient, SafeStrRecord } from '../../database/spanner';
 import { UUIDGenerator } from '../../utils/uuidGenerator';
 import { PUIDGenerator } from '../../utils/puidGenerator';
 import { XSDValidator, ValidationResult } from '../../validation/xsdValidator';
-import { SingaporeValidator } from '../../validation/singaporeValidator';
+import { MarketValidator } from '../../validation/marketValidator';
 import { XMLParser, MessageInfo } from '../../utils/xmlParser';
 import { EnrichmentClient } from '../clients/enrichmentClient';
 import defaultConfig from '../../config/default';
 
-export class PacsHandler {
+export class MessageHandler {
   private spannerClient: SpannerClient;
   private xsdValidator: XSDValidator;
   private enrichmentClient: EnrichmentClient;
@@ -19,7 +19,7 @@ export class PacsHandler {
     this.enrichmentClient = new EnrichmentClient(defaultConfig.grpc.enrichmentServiceUrl);
   }
 
-  async processPacsMessage(call: grpc.ServerUnaryCall<any, any>, callback: grpc.sendUnaryData<any>): Promise<void> {
+  async processMessage(call: grpc.ServerUnaryCall<any, any>, callback: grpc.sendUnaryData<any>): Promise<void> {
     try {
       const request = call.request;
       const { message_type, xml_payload, metadata } = request;
@@ -32,11 +32,12 @@ export class PacsHandler {
         });
       }
 
-      // Validate message type
-      if (!['PACS008', 'PACS007', 'PACS003'].includes(message_type)) {
+      // Validate message type - support PACS and future CAMT messages
+      const supportedTypes = ['PACS008', 'PACS007', 'PACS003', 'CAMT053', 'CAMT054'];
+      if (!supportedTypes.includes(message_type)) {
         return callback({
           code: grpc.status.INVALID_ARGUMENT,
-          message: 'Invalid message_type. Must be one of: PACS008, PACS007, PACS003',
+          message: `Invalid message_type. Must be one of: ${supportedTypes.join(', ')}`,
         });
       }
 
@@ -79,10 +80,10 @@ export class PacsHandler {
         console.warn(`⚠️  XSD validation warnings for ${puid}:`, xsdValidation.warnings);
       }
 
-      // Step 3: Basic Singapore market validation (just warnings)
-      const sgValidation = SingaporeValidator.validateBasicSingaporeMarket(xml_payload);
-      if (sgValidation.warnings && sgValidation.warnings.length > 0) {
-        console.warn(`🇸🇬 Singapore market warnings for ${puid}:`, sgValidation.warnings);
+      // Step 3: Basic market validation (just warnings)
+      const marketValidation = MarketValidator.validateBasicMarket(xml_payload, metadata || {});
+      if (marketValidation.warnings && marketValidation.warnings.length > 0) {
+        console.warn(`🌍 Market validation warnings for ${puid}:`, marketValidation.warnings);
       }
 
       // Step 4: Persist to database
@@ -125,7 +126,7 @@ export class PacsHandler {
       callback(null, response);
 
     } catch (error) {
-      console.error('❌ Error processing PACS message:', error);
+      console.error('❌ Error processing financial message:', error);
       callback({
         code: grpc.status.INTERNAL,
         message: 'Internal server error',

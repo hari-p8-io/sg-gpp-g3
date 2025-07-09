@@ -4,9 +4,9 @@ package gpp.g3.validation;
 
 option go_package = "github.com/gpp/g3/validation";
 
-// Validation service for PACS message validation and Kafka publishing
+// Validation service for financial message validation and Kafka publishing
 service ValidationService {
-  // Validate an enriched PACS message
+  // Validate an enriched financial message
   rpc ValidateEnrichedMessage(ValidateEnrichedMessageRequest) returns (ValidateEnrichedMessageResponse);
   
   // Health check

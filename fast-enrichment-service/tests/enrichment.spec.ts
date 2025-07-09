@@ -81,7 +81,7 @@ test.describe('Fast Enrichment Service', () => {
     expect((response as any).message).toContain('healthy');
   });
 
-  test.skip('should enrich PACS message successfully', async () => {
+  test.skip('should enrich financial message successfully', async () => {
     const request = {
       message_id: 'TEST_MSG_001',
       puid: 'TEST_PUID_001',
@@ -94,7 +94,7 @@ test.describe('Fast Enrichment Service', () => {
     };
 
     const response = await new Promise((resolve, reject) => {
-      enrichmentClient.EnrichPacsMessage(request, (error: any, response: any) => {
+      enrichmentClient.EnrichMessage(request, (error: any, response: any) => {
         if (error) {
           reject(error);
         } else {
@@ -136,7 +136,7 @@ test.describe('Fast Enrichment Service', () => {
     };
 
     const response = await new Promise((resolve, reject) => {
-      enrichmentClient.EnrichPacsMessage(request, (error: any, response: any) => {
+      enrichmentClient.EnrichMessage(request, (error: any, response: any) => {
         if (error) {
           reject(error);
         } else {
@@ -171,7 +171,7 @@ test.describe('Fast Enrichment Service', () => {
     };
 
     const response = await new Promise((resolve, reject) => {
-      enrichmentClient.EnrichPacsMessage(request, (error: any, response: any) => {
+      enrichmentClient.EnrichMessage(request, (error: any, response: any) => {
         if (error) {
           reject(error);
         } else {
@@ -189,7 +189,7 @@ test.describe('Fast Enrichment Service', () => {
     expect(res.enrichment_data.physical_acct_info.acct_sys).toBe('MEPS');
   });
 
-  test.skip('should handle Singapore-specific enrichment', async () => {
+  test.skip('should handle market-specific enrichment', async () => {
     const sgXml = TEST_XML_PAYLOAD.replace('SGD', 'SGD').replace('SG', 'SG');
 
     const request = {
@@ -202,7 +202,7 @@ test.describe('Fast Enrichment Service', () => {
     };
 
     const response = await new Promise((resolve, reject) => {
-      enrichmentClient.EnrichPacsMessage(request, (error: any, response: any) => {
+      enrichmentClient.EnrichMessage(request, (error: any, response: any) => {
         if (error) {
           reject(error);
         } else {
@@ -231,7 +231,7 @@ test.describe('Fast Enrichment Service', () => {
     };
 
     const response = await new Promise((resolve, reject) => {
-      enrichmentClient.EnrichPacsMessage(request, (error: any, response: any) => {
+      enrichmentClient.EnrichMessage(request, (error: any, response: any) => {
         if (error) {
           reject(error);
         } else {
@@ -263,7 +263,7 @@ test.describe('Fast Enrichment Service', () => {
     };
 
     const response = await new Promise((resolve, reject) => {
-      enrichmentClient.EnrichPacsMessage(request, (error: any, response: any) => {
+      enrichmentClient.EnrichMessage(request, (error: any, response: any) => {
         if (error) {
           reject(error);
         } else {
@@ -293,7 +293,7 @@ test.describe('Fast Enrichment Service', () => {
     };
 
     const response = await new Promise((resolve, reject) => {
-      enrichmentClient.EnrichPacsMessage(request, (error: any, response: any) => {
+      enrichmentClient.EnrichMessage(request, (error: any, response: any) => {
         if (error) {
           reject(error);
         } else {
@@ -326,7 +326,7 @@ test.describe('Fast Enrichment Service', () => {
       };
 
       const response = await new Promise((resolve, reject) => {
-        enrichmentClient.EnrichPacsMessage(request, (error: any, response: any) => {
+        enrichmentClient.EnrichMessage(request, (error: any, response: any) => {
           if (error) {
             reject(error);
           } else {
@@ -357,7 +357,7 @@ test.describe('Fast Enrichment Service', () => {
       };
 
       const response = await new Promise((resolve, reject) => {
-        enrichmentClient.EnrichPacsMessage(request, (error: any, response: any) => {
+        enrichmentClient.EnrichMessage(request, (error: any, response: any) => {
           if (error) {
             reject(error);
           } else {
@@ -385,7 +385,7 @@ test.describe('Fast Enrichment Service', () => {
     };
 
     const response = await new Promise((resolve, reject) => {
-      enrichmentClient.EnrichPacsMessage(request, (error: any, response: any) => {
+      enrichmentClient.EnrichMessage(request, (error: any, response: any) => {
         if (error) {
           reject(error);
         } else {

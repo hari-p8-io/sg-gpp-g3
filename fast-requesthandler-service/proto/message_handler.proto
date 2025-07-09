@@ -2,9 +2,9 @@ syntax = "proto3";
 
 package gpp.g3.requesthandler;
 
-service PacsHandler {
-  // Process a PACS message (008, 007, or 003)
-  rpc ProcessPacsMessage(PacsMessageRequest) returns (PacsMessageResponse);
+service MessageHandler {
+  // Process a financial message (PACS008, PACS007, PACS003, CAMT, etc.)
+  rpc ProcessMessage(MessageRequest) returns (MessageResponse);
   
   // Get the status of a previously processed message
   rpc GetMessageStatus(MessageStatusRequest) returns (MessageStatusResponse);
@@ -22,13 +22,13 @@ service PacsHandler {
   rpc GetMockStorageSize(GetMockStorageSizeRequest) returns (GetMockStorageSizeResponse);
 }
 
-message PacsMessageRequest {
-  string message_type = 1;  // PACS008, PACS007, PACS003
+message MessageRequest {
+  string message_type = 1;  // PACS008, PACS007, PACS003, CAMT053, etc.
   string xml_payload = 2;   // The raw XML content
-  map<string, string> metadata = 3; // Additional metadata (e.g., source system, timestamp)
+  map<string, string> metadata = 3; // Additional metadata (e.g., source system, timestamp, market)
 }
 
-message PacsMessageResponse {
+message MessageResponse {
   string message_id = 1;    // Generated 36-char UUID
   string puid = 2;          // Generated 16-char ID starting with "G3I"
   bool success = 3;         // Whether the processing was successful

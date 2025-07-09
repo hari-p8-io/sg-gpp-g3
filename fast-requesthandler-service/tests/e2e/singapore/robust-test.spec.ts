@@ -5,8 +5,14 @@ test.describe('Robust Integration Tests', () => {
   let testHelper: TestHelper;
 
   test.beforeEach(async () => {
-    testHelper = TestHelper.getInstance();
-    await testHelper.setupTest();
+    testHelper = new TestHelper();
+    await testHelper.clearDatabaseCompletely();
+  });
+
+  test.afterEach(async () => {
+    if (testHelper) {
+      await testHelper.shutdown();
+    }
   });
 
   test.skip('should process single PACS008 message end-to-end', async () => {

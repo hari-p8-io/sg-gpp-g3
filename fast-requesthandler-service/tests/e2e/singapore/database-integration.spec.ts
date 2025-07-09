@@ -5,11 +5,16 @@ test.describe('Database Integration Tests', () => {
   let testHelper: TestHelper;
 
   test.beforeEach(async () => {
-    testHelper = TestHelper.getInstance();
+    testHelper = new TestHelper();
     
     // Basic cleanup without aggressive clearing
-    await testHelper.getGrpcClient().clearMockStorage();
-    await testHelper.wait(500);
+    await testHelper.clearDatabaseCompletely();
+  });
+
+  test.afterEach(async () => {
+    if (testHelper) {
+      await testHelper.shutdown();
+    }
   });
 
   test.skip('should process and respond to PACS008 message', async () => {

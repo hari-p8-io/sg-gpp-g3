@@ -6,7 +6,11 @@
   "scripts": {
     "test": "node test-orchestration.js",
     "start-orchestration": "./start-orchestration-test.sh",
-    "start-orchestration-no-test": "./start-orchestration-test.sh --no-test"
+    "start-orchestration-no-test": "./start-orchestration-test.sh --no-test",
+    "start:fast-requesthandler": "cd fast-requesthandler-service && npm run dev",
+    "start:fast-enrichment": "cd fast-enrichment-service && npm run dev",
+    "start:fast-validation": "cd fast-validation-service && npm run dev",
+    "start:fast-orchestrator": "cd fast-orchestrator-service && npm run dev"
   },
   "dependencies": {
     "@grpc/grpc-js": "^1.13.4",

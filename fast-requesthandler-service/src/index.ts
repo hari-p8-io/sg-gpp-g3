@@ -2,7 +2,7 @@ import * as grpc from '@grpc/grpc-js';
 import * as protoLoader from '@grpc/proto-loader';
 import { config } from 'dotenv';
 import path from 'path';
-import { PacsHandler } from './grpc/handlers/pacsHandler';
+import { MessageHandler } from './grpc/handlers/messageHandler';
 import { SpannerClient } from './database/spanner';
 import defaultConfig from './config/default';
 
@@ -10,7 +10,7 @@ import defaultConfig from './config/default';
 config();
 
 // Load proto definition
-const PROTO_PATH = path.join(__dirname, '../proto/pacs_handler.proto');
+const PROTO_PATH = path.join(__dirname, '../proto/message_handler.proto');
 const packageDefinition = protoLoader.loadSync(PROTO_PATH, {
   keepCase: true,
   longs: String,
@@ -19,7 +19,7 @@ const packageDefinition = protoLoader.loadSync(PROTO_PATH, {
   oneofs: true,
 });
 
-const pacsProto = grpc.loadPackageDefinition(packageDefinition) as any;
+const messageProto = grpc.loadPackageDefinition(packageDefinition) as any;
 
 async function startServer() {
   // Initialize database connection
@@ -31,19 +31,19 @@ async function startServer() {
   }
 
   // Initialize handlers
-  const pacsHandler = new PacsHandler(spannerClient);
+  const messageHandler = new MessageHandler(spannerClient);
 
   // Create gRPC server
   const server = new grpc.Server();
 
   // Add services
-  server.addService(pacsProto.gpp.g3.requesthandler.PacsHandler.service, {
-    ProcessPacsMessage: pacsHandler.processPacsMessage.bind(pacsHandler),
-    GetMessageStatus: pacsHandler.getMessageStatus.bind(pacsHandler),
-    HealthCheck: pacsHandler.healthCheck.bind(pacsHandler),
-    GetAllMessages: pacsHandler.getAllMessages.bind(pacsHandler),
-    ClearMockStorage: pacsHandler.clearMockStorage.bind(pacsHandler),
-    GetMockStorageSize: pacsHandler.getMockStorageSize.bind(pacsHandler),
+  server.addService(messageProto.gpp.g3.requesthandler.MessageHandler.service, {
+    ProcessMessage: messageHandler.processMessage.bind(messageHandler),
+    GetMessageStatus: messageHandler.getMessageStatus.bind(messageHandler),
+    HealthCheck: messageHandler.healthCheck.bind(messageHandler),
+    GetAllMessages: messageHandler.getAllMessages.bind(messageHandler),
+    ClearMockStorage: messageHandler.clearMockStorage.bind(messageHandler),
+    GetMockStorageSize: messageHandler.getMockStorageSize.bind(messageHandler),
   });
 
   // Start server
@@ -59,9 +59,9 @@ async function startServer() {
       
       console.log(`🚀 fast-requesthandler-service gRPC server started on port ${port}`);
       console.log(`🏥 Health check: grpc://localhost:${port}/HealthCheck`);
-      console.log(`📊 PACS Handler: grpc://localhost:${port}/ProcessPacsMessage`);
+      console.log(`📊 Message Handler: grpc://localhost:${port}/ProcessMessage`);
       console.log(`🔍 Message Status: grpc://localhost:${port}/GetMessageStatus`);
-      console.log(`🌏 Singapore market ready - SGD currency, SG country codes`);
+      console.log(`🌍 Multi-market ready - Supports PACS, CAMT messages for various markets`);
       
       server.start();
     }

@@ -29,8 +29,8 @@ export const getConfig = (): ValidationServiceConfig => {
     serviceName: process.env['SERVICE_NAME'] || 'fast-validation-service',
     logLevel: process.env['LOG_LEVEL'] || 'info',
     environment: process.env['ENVIRONMENT'] || 'development',
-    expectedCountry: process.env['EXPECTED_COUNTRY'] || 'SG',
-    expectedCurrency: process.env['EXPECTED_CURRENCY'] || 'SGD',
+    expectedCountry: process.env['COUNTRY'] || 'SG',
+    expectedCurrency: process.env['DEFAULT_CURRENCY'] || 'SGD',
     useTestMode: process.env['USE_TEST_MODE'] === 'true',
     kafka: {
       brokers: (process.env['KAFKA_BROKERS'] || 'localhost:9092').split(','),

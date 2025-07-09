@@ -1,31 +1,46 @@
-export const SINGAPORE_BANKING_CONSTANTS = {
-  COUNTRY_CODE: "SG",
-  CURRENCY_CODE: "SGD",
-  TIMEZONE: "Asia/Singapore",
-  BANK_CODES: {
-    ANZ: "ANZBSG3MXXX",
-    DBS: "DBSSSGSGXXX",
-    OCBC: "OCBCSGSGXXX",
-    UOB: "UOVBSGSGXXX"
-  },
-  ACCOUNT_SYSTEMS: {
-    MDZ: "MDZ", // Main clearing system
-    MEPS: "MEPS", // Electronic payment system
-    FAST: "FAST", // Fast payment system
-    VAM: "VAM" // Value-added services mediation system
-  },
-  ACCOUNT_GROUPS: {
-    SGB: "SGB", // Singapore Banking Group
-    RETAIL: "RETAIL",
-    CORPORATE: "CORPORATE"
-  },
-  BRANCH_CODES: {
-    MAIN: "001",
-    ORCHARD: "002",
-    RAFFLES: "003",
-    MARINA: "004"
+export const MARKET_BANKING_CONSTANTS = {
+  // Singapore Market (Primary Implementation)
+  SG: {
+    COUNTRY_CODE: "SG",
+    CURRENCY_CODE: "SGD",
+    TIMEZONE: "Asia/Singapore",
+    BANK_CODES: {
+      ANZ: "ANZBSG3MXXX",
+      DBS: "DBSSSGSGXXX",
+      OCBC: "OCBCSGSGXXX",
+      UOB: "UOVBSGSGXXX"
+    },
+    ACCOUNT_SYSTEMS: {
+      MDZ: "MDZ", // Main clearing system
+      MEPS: "MEPS", // Electronic payment system
+      FAST: "FAST", // Fast payment system
+      VAM: "VAM" // Value-added services mediation system
+    },
+    ACCOUNT_GROUPS: {
+      SGB: "SGB", // Singapore Banking Group
+      RETAIL: "RETAIL",
+      CORPORATE: "CORPORATE"
+    },
+    BRANCH_CODES: {
+      MAIN: "001",
+      ORCHARD: "002",
+      RAFFLES: "003",
+      MARINA: "004"
+    }
   }
+  
+  // Future markets can be added here:
+  // MY: { ... },
+  // TH: { ... }
 };
+
+// Helper function to get market constants (defaults to Singapore)
+export function getMarketConstants(market: string = 'SG') {
+  return MARKET_BANKING_CONSTANTS[market as keyof typeof MARKET_BANKING_CONSTANTS] || MARKET_BANKING_CONSTANTS.SG;
+}
+
+// Backward compatibility - default to Singapore
+export const SINGAPORE_BANKING_CONSTANTS = MARKET_BANKING_CONSTANTS.SG;
 
 export const ERROR_CODES = {
   INVALID_INPUT: "LOOKUP_INVALID_INPUT_001",

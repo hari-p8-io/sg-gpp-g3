@@ -111,22 +111,33 @@ export class XMLParser {
     }
   }
 
-  static isPACSMessage(xmlPayload: string): boolean {
-    // Check if the XML contains PACS-related elements
+  static isFinancialMessage(xmlPayload: string): boolean {
+    // Check if the XML contains financial message elements (PACS, CAMT, etc.)
     return xmlPayload.includes('pacs.') || 
            xmlPayload.includes('PACS') ||
+           xmlPayload.includes('camt.') ||
+           xmlPayload.includes('CAMT') ||
            xmlPayload.includes('FIToFICstmrCdtTrf') ||
            xmlPayload.includes('FIToFIPmtStsRpt') ||
-           xmlPayload.includes('FIToFICstmrDrctDbt');
+           xmlPayload.includes('FIToFICstmrDrctDbt') ||
+           xmlPayload.includes('BkToCstmrStmt') ||
+           xmlPayload.includes('BkToCstmrDbtCdtNtfctn');
   }
 
   static getMessageType(xmlPayload: string): string {
+    // PACS messages
     if (xmlPayload.includes('pacs.008') || xmlPayload.includes('FIToFICstmrCdtTrf')) {
       return 'PACS008';
     } else if (xmlPayload.includes('pacs.007') || xmlPayload.includes('FIToFIPmtStsRpt')) {
       return 'PACS007';
     } else if (xmlPayload.includes('pacs.003') || xmlPayload.includes('FIToFICstmrDrctDbt')) {
       return 'PACS003';
+    }
+    // CAMT messages
+    else if (xmlPayload.includes('camt.053') || xmlPayload.includes('BkToCstmrStmt')) {
+      return 'CAMT053';
+    } else if (xmlPayload.includes('camt.054') || xmlPayload.includes('BkToCstmrDbtCdtNtfctn')) {
+      return 'CAMT054';
     } else {
       return 'UNKNOWN';
     }

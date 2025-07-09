@@ -13,11 +13,17 @@ test.describe('Singapore PACS Message Processing', () => {
   let grpcClient: ReturnType<typeof createGrpcClient>;
 
   test.beforeAll(async () => {
-    testHelper = TestHelper.getInstance();
+    testHelper = new TestHelper();
     grpcClient = testHelper.getGrpcClient();
     
     // Wait for service to be ready
-    await grpcClient.waitForServiceReady(60000);
+    await grpcClient.waitForServiceReady();
+  });
+
+  test.afterAll(async () => {
+    if (testHelper) {
+      await testHelper.shutdown();
+    }
   });
 
   test.beforeEach(async () => {

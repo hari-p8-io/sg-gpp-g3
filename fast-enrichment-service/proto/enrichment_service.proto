@@ -3,8 +3,8 @@ syntax = "proto3";
 package gpp.g3.enrichment;
 
 service EnrichmentService {
-  // Enrich a PACS message with account lookup data
-  rpc EnrichPacsMessage(EnrichmentRequest) returns (EnrichmentResponse);
+  // Enrich a financial message with account lookup data
+  rpc EnrichMessage(EnrichmentRequest) returns (EnrichmentResponse);
   
   // Health check for the enrichment service
   rpc HealthCheck(HealthCheckRequest) returns (HealthCheckResponse);
@@ -13,9 +13,9 @@ service EnrichmentService {
 message EnrichmentRequest {
   string message_id = 1;          // UUID from request handler
   string puid = 2;                // G3I identifier
-  string message_type = 3;        // PACS008, PACS007, PACS003
+  string message_type = 3;        // PACS008, PACS007, PACS003, CAMT053, CAMT054, etc.
   string xml_payload = 4;         // The validated XML payload
-  map<string, string> metadata = 5; // Additional context data
+  map<string, string> metadata = 5; // Additional context data (including market info)
   int64 timestamp = 6;            // Original processing timestamp
 }
 
@@ -44,14 +44,14 @@ message EnrichmentData {
 
 message PhysicalAccountInfo {
   string acct_id = 1;                  // Account ID
-  string acct_sys = 2;                 // Account system (MDZ)
-  string acct_group = 3;               // Account group (SGB)
-  string country = 4;                  // Country (SG)
+  string acct_sys = 2;                 // Account system (MDZ, MEPS, etc.)
+  string acct_group = 3;               // Account group (varies by market)
+  string country = 4;                  // Country code (SG, MY, TH, etc.)
   string branch_id = 5;                // Branch ID (nullable)
   AccountAttributes acct_attributes = 6;
   AccountOpsAttributes acct_ops_attributes = 7;
-  string bicfi = 8;                    // Bank identifier (ANZBSG3MXXX)
-  string currency_code = 9;            // Currency (SGD)
+  string bicfi = 8;                    // Bank identifier (market-specific)
+  string currency_code = 9;            // Currency code (SGD, MYR, THB, USD, EUR, etc.)
 }
 
 message AccountAttributes {

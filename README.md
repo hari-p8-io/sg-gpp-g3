@@ -20,6 +20,7 @@ A comprehensive monorepo housing multiple microservices for the GPP G3 initiativ
 
 ```
 ├── fast-requesthandler-service/       # TypeScript service
+│   └── docs/                          # Implementation plans and documentation
 ├── fast-enrichment-service/           # TypeScript service
 ├── fast-validation-service/           # TypeScript service
 ├── fast-orchestrator-service/         # TypeScript service
@@ -27,10 +28,11 @@ A comprehensive monorepo housing multiple microservices for the GPP G3 initiativ
 ├── fast-accounting-service/           # Java service (shell)
 ├── fast-vammediation-service/         # Java service (shell)
 ├── fast-mdzmediation-service/         # Java service (shell)
+├── utilities/                         # Testing scripts and test reports
 ├── package.json                       # Node.js workspace configuration
 ├── pom.xml                           # Maven parent POM
-├── docs/
-└── shared/
+├── docker-compose.yml                # Docker orchestration
+└── README.md                         # This file
 ```
 
 ## Prerequisites
@@ -136,6 +138,41 @@ npm run java:build     # Build all Java services
 npm run java:test      # Test all Java services
 mvn clean install     # Direct Maven build
 ```
+
+## Testing
+
+### End-to-End Testing
+The `utilities/` directory contains comprehensive testing scripts for the entire system:
+
+```bash
+# Run full orchestration test with all services
+./utilities/start-orchestration-test.sh
+
+# Run specific test scripts
+node utilities/test-orchestration.js
+node utilities/comprehensive-e2e-test.js
+```
+
+### Service-Specific Testing
+Each service has its own test suite:
+
+```bash
+# TypeScript services
+cd [service-name]
+npm test
+
+# Java services
+cd [service-name]
+mvn test
+```
+
+See `utilities/README.md` for detailed information about all available testing scripts and test reports.
+
+## Documentation
+
+- **Implementation Plans**: `fast-requesthandler-service/docs/`
+- **Test Reports**: `utilities/` directory
+- **Service Documentation**: Individual service README files
 
 ## Docker Support
 All services include Docker configurations for containerized deployment.

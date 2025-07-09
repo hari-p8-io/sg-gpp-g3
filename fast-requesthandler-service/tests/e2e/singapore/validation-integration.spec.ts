@@ -11,7 +11,7 @@ test.describe('Validation and Integration Tests', () => {
 
   test.describe('XSD Schema Validation', () => {
     test.skip('should validate PACS008 against XSD schema', async () => {
-      const xmlPayload = loadFixture('sample_pacs008_sg.xml');
+      const xmlPayload = loadFixture('sample_pacs008.xml');
       
       const response = await grpcClient.processPacsMessage({
         message_type: 'PACS008',
@@ -27,7 +27,7 @@ test.describe('Validation and Integration Tests', () => {
     });
 
     test.skip('should validate PACS007 against XSD schema', async () => {
-      const xmlPayload = loadFixture('sample_pacs007_sg.xml');
+      const xmlPayload = loadFixture('sample_pacs007.xml');
       
       const response = await grpcClient.processPacsMessage({
         message_type: 'PACS007',
@@ -41,7 +41,7 @@ test.describe('Validation and Integration Tests', () => {
     });
 
     test.skip('should validate PACS003 against XSD schema', async () => {
-      const xmlPayload = loadFixture('sample_pacs003_sg.xml');
+      const xmlPayload = loadFixture('sample_pacs003.xml');
       
       const response = await grpcClient.processPacsMessage({
         message_type: 'PACS003',
@@ -118,7 +118,7 @@ test.describe('Validation and Integration Tests', () => {
 
   test.describe('Singapore-Specific Validation', () => {
     test.skip('should validate SGD currency format', async () => {
-      const xmlPayload = loadFixture('sample_pacs008_sg.xml');
+      const xmlPayload = loadFixture('sample_pacs008.xml');
       
       // Ensure SGD currency is present
       expect(xmlPayload).toContain('Ccy="SGD"');
@@ -133,7 +133,7 @@ test.describe('Validation and Integration Tests', () => {
     });
 
     test.skip('should validate Singapore country codes', async () => {
-      const xmlPayload = loadFixture('sample_pacs008_sg.xml');
+      const xmlPayload = loadFixture('sample_pacs008.xml');
       
       // Ensure SG country code is present
       expect(xmlPayload).toContain('<Ctry>SG</Ctry>');
@@ -148,7 +148,7 @@ test.describe('Validation and Integration Tests', () => {
     });
 
     test.skip('should validate Singapore postal codes', async () => {
-      const xmlPayload = loadFixture('sample_pacs008_sg.xml');
+      const xmlPayload = loadFixture('sample_pacs008.xml');
       
       // Ensure Singapore postal code format is present
       expect(xmlPayload).toMatch(/Singapore \d{6}/);
@@ -163,7 +163,7 @@ test.describe('Validation and Integration Tests', () => {
     });
 
     test.skip('should validate Singapore timezone', async () => {
-      const xmlPayload = loadFixture('sample_pacs008_sg.xml');
+      const xmlPayload = loadFixture('sample_pacs008.xml');
       
       // Ensure Singapore timezone (+08:00) is present
       expect(xmlPayload).toContain('+08:00');
@@ -178,7 +178,7 @@ test.describe('Validation and Integration Tests', () => {
     });
 
     test.skip('should handle non-SGD currency with warnings', async () => {
-      let xmlPayload = loadFixture('sample_pacs008_sg.xml');
+      let xmlPayload = loadFixture('sample_pacs008.xml');
       
       // Replace SGD with USD for testing
       xmlPayload = xmlPayload.replace(/Ccy="SGD"/g, 'Ccy="USD"');
@@ -196,7 +196,7 @@ test.describe('Validation and Integration Tests', () => {
 
   test.describe('Message Processing Pipeline', () => {
     test.skip('should process message through complete pipeline', async () => {
-      const xmlPayload = loadFixture('sample_pacs008_sg.xml');
+      const xmlPayload = loadFixture('sample_pacs008.xml');
       
       const response = await grpcClient.processPacsMessage({
         message_type: 'PACS008',
@@ -211,7 +211,7 @@ test.describe('Validation and Integration Tests', () => {
 
   test.describe('Message Type Specific Validation', () => {
     test('should validate PACS008 credit transfer structure', async () => {
-      const xmlPayload = loadFixture('sample_pacs008_sg.xml');
+      const xmlPayload = loadFixture('sample_pacs008.xml');
       
       // Ensure PACS008 specific elements are present
       expect(xmlPayload).toContain('<FIToFICstmrCdtTrf>');
@@ -229,7 +229,7 @@ test.describe('Validation and Integration Tests', () => {
     });
 
     test('should validate PACS007 reversal structure', async () => {
-      const xmlPayload = loadFixture('sample_pacs007_sg.xml');
+      const xmlPayload = loadFixture('sample_pacs007.xml');
       
       // Ensure PACS007 specific elements are present
       expect(xmlPayload).toContain('<FIToFIPmtRvsl>');
@@ -247,7 +247,7 @@ test.describe('Validation and Integration Tests', () => {
     });
 
     test('should validate PACS003 direct debit structure', async () => {
-      const xmlPayload = loadFixture('sample_pacs003_sg.xml');
+      const xmlPayload = loadFixture('sample_pacs003.xml');
       
       // Ensure PACS003 specific elements are present
       expect(xmlPayload).toContain('<FIToFICstmrDrctDbt>');
@@ -265,7 +265,7 @@ test.describe('Validation and Integration Tests', () => {
     });
 
     test('should handle message type mismatch appropriately', async () => {
-      const xmlPayload = loadFixture('sample_pacs008_sg.xml');
+      const xmlPayload = loadFixture('sample_pacs008.xml');
       
       try {
         // Try to process PACS008 XML as PACS007
@@ -298,7 +298,7 @@ test.describe('Validation and Integration Tests', () => {
 
   test.describe('Data Validation Edge Cases', () => {
     test('should handle very large XML payloads', async () => {
-      let xmlPayload = loadFixture('sample_pacs008_sg.xml');
+      let xmlPayload = loadFixture('sample_pacs008.xml');
       
       // Add a large remittance information section
       const largeRemittanceInfo = 'A'.repeat(1000);
@@ -319,7 +319,7 @@ test.describe('Validation and Integration Tests', () => {
     });
 
     test('should handle special characters in XML', async () => {
-      let xmlPayload = loadFixture('sample_pacs008_sg.xml');
+      let xmlPayload = loadFixture('sample_pacs008.xml');
       
       // Add special characters in names (unescaped & which will cause XML parsing issues)
       xmlPayload = xmlPayload.replace(
@@ -351,7 +351,7 @@ test.describe('Validation and Integration Tests', () => {
     });
 
     test('should handle different decimal precision in amounts', async () => {
-      let xmlPayload = loadFixture('sample_pacs008_sg.xml');
+      let xmlPayload = loadFixture('sample_pacs008.xml');
       
       // Test different decimal precisions
       const testCases = ['1500.5', '1500.50', '1500.500'];
@@ -370,7 +370,7 @@ test.describe('Validation and Integration Tests', () => {
     });
 
     test('should handle very small amounts', async () => {
-      let xmlPayload = loadFixture('sample_pacs008_sg.xml');
+      let xmlPayload = loadFixture('sample_pacs008.xml');
       
       // Test very small amounts
       xmlPayload = xmlPayload.replace(/1500\.00/g, '0.01');
@@ -387,7 +387,7 @@ test.describe('Validation and Integration Tests', () => {
 
   test.describe('Error Recovery and Resilience', () => {
     test('should handle temporary enrichment service unavailability', async () => {
-      const xmlPayload = loadFixture('sample_pacs008_sg.xml');
+      const xmlPayload = loadFixture('sample_pacs008.xml');
       
       const response = await grpcClient.processPacsMessage({
         message_type: 'PACS008',
@@ -405,7 +405,7 @@ test.describe('Validation and Integration Tests', () => {
     });
 
     test('should handle partial validation failures gracefully', async () => {
-      let xmlPayload = loadFixture('sample_pacs008_sg.xml');
+      let xmlPayload = loadFixture('sample_pacs008.xml');
       
       // Create a message with minor validation issues
       xmlPayload = xmlPayload.replace(
@@ -428,7 +428,7 @@ test.describe('Validation and Integration Tests', () => {
 
   test.describe('Performance Under Load', () => {
     test('should maintain validation performance under load', async () => {
-      const xmlPayload = loadFixture('sample_pacs008_sg.xml');
+      const xmlPayload = loadFixture('sample_pacs008.xml');
       
       const startTime = Date.now();
       

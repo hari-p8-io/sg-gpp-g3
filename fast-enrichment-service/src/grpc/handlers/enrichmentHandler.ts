@@ -9,11 +9,11 @@ export class EnrichmentHandler {
     this.enrichmentService = new EnrichmentService();
   }
 
-  enrichPacsMessage = async (call: grpc.ServerUnaryCall<any, any>, callback: grpc.sendUnaryData<any>) => {
+  enrichMessage = async (call: grpc.ServerUnaryCall<any, any>, callback: grpc.sendUnaryData<any>) => {
     try {
       const request = call.request;
 
-      logger.info('gRPC EnrichPacsMessage request received', {
+      logger.info('gRPC EnrichMessage request received', {
         messageId: request.message_id,
         puid: request.puid,
         messageType: request.message_type
@@ -30,7 +30,7 @@ export class EnrichmentHandler {
       };
 
       // Call the enrichment service
-      const serviceResponse = await this.enrichmentService.enrichPacsMessage(serviceRequest);
+      const serviceResponse = await this.enrichmentService.enrichMessage(serviceRequest);
 
       // Convert service response to gRPC response
       const grpcResponse = {
@@ -44,7 +44,7 @@ export class EnrichmentHandler {
         next_service: serviceResponse.nextService
       };
 
-      logger.info('gRPC EnrichPacsMessage response sent', {
+      logger.info('gRPC EnrichMessage response sent', {
         messageId: serviceResponse.messageId,
         success: serviceResponse.success,
         hasEnrichmentData: !!serviceResponse.enrichmentData
@@ -53,7 +53,7 @@ export class EnrichmentHandler {
       callback(null, grpcResponse);
 
     } catch (error) {
-      logger.error('gRPC EnrichPacsMessage error', {
+      logger.error('gRPC EnrichMessage error', {
         error: error instanceof Error ? error.message : 'Unknown error',
         stack: error instanceof Error ? error.stack : undefined
       });

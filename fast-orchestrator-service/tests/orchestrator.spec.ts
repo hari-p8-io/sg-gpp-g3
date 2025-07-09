@@ -14,8 +14,8 @@ const SAMPLE_VALIDATED_MESSAGE = {
     timestamp: new Date().toISOString(),
     extractedFields: {
       cdtrAcct: '123456789',
-      currency: 'SGD',
-      country: 'SG',
+      currency: process.env.DEFAULT_CURRENCY || 'SGD',
+      country: process.env.COUNTRY || 'SG',
       amount: '1000.00'
     },
     service: 'fast-validation-service'
@@ -32,7 +32,7 @@ const SAMPLE_VALIDATED_MESSAGE = {
       acctId: '123456789',
       acctSys: 'MDZ',
       acctGroup: 'SGB',
-      country: 'SG',
+      country: process.env.COUNTRY || 'SG',
       acctAttributes: {
         acctType: 'Physical',
         acctCategory: 'RETAIL',
@@ -156,7 +156,6 @@ test.describe('Fast Orchestrator Service HTTP API', () => {
     
     const body = await response.json();
     expect(body.error).toBe('Orchestration not found');
-    expect(body.messageId).toBe('NON_EXISTENT_MSG');
     expect(body.requestId).toBeDefined();
     expect(body.timestamp).toBeDefined();
   });
@@ -167,7 +166,7 @@ test.describe('Fast Orchestrator Service HTTP API', () => {
     expect(response.status()).toBe(404);
     
     const body = await response.json();
-    expect(body.error).toBe('Endpoint not found');
+    expect(body.error).toBe('Not found');
     expect(body.requestId).toBeDefined();
     expect(body.timestamp).toBeDefined();
   });

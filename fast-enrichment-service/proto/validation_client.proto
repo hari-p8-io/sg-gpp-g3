@@ -5,8 +5,8 @@ package gpp.g3.validation;
 import "enrichment_service.proto";
 
 service ValidationService {
-  // Validate enriched PACS message
-  rpc ValidatePacsMessage(ValidationRequest) returns (ValidationResponse);
+  // Validate enriched financial message
+  rpc ValidateEnrichedMessage(ValidationRequest) returns (ValidationResponse);
   
   // Health check
   rpc HealthCheck(HealthCheckRequest) returns (HealthCheckResponse);

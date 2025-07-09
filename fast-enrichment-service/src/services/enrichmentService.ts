@@ -39,10 +39,10 @@ export class EnrichmentService {
     this.useMockMode = process.env.NODE_ENV === 'test' || process.env.USE_MOCK_MODE === 'true';
   }
 
-  async enrichPacsMessage(request: EnrichmentRequest): Promise<EnrichmentResponse> {
+  async enrichMessage(request: EnrichmentRequest): Promise<EnrichmentResponse> {
     const startTime = Date.now();
 
-    logger.info('PACS message enrichment started', {
+    logger.info('Financial message enrichment started', {
       messageId: request.messageId,
       puid: request.puid,
       messageType: request.messageType,
@@ -117,17 +117,20 @@ export class EnrichmentService {
         lookupSource: lookupResponse.lookupSource
       });
 
+      // Get market configuration from metadata or use defaults
+      const marketConfig = this.getMarketConfig(request.metadata);
+
       // Call reference data service to get auth method
       let authMethod: string = 'AFPONLY'; // default
       try {
         const referenceDataResponse = await this.referenceDataClient.lookupAuthMethod({
           messageId: request.messageId,
           puid: request.puid,
-          acctSys: lookupResponse.enrichmentData?.physicalAcctInfo?.acctSys || 'MDZ',
-          acctGrp: lookupResponse.enrichmentData?.physicalAcctInfo?.acctGroup || 'SGB',
+          acctSys: lookupResponse.enrichmentData?.physicalAcctInfo?.acctSys || marketConfig.defaultAcctSys,
+          acctGrp: lookupResponse.enrichmentData?.physicalAcctInfo?.acctGroup || marketConfig.defaultAcctGroup,
           acctId: cdtrAcct,
-          country: lookupResponse.enrichmentData?.physicalAcctInfo?.country || 'SG',
-          currencyCode: lookupResponse.enrichmentData?.physicalAcctInfo?.currencyCode || 'SGD',
+          country: lookupResponse.enrichmentData?.physicalAcctInfo?.country || marketConfig.country,
+          currencyCode: lookupResponse.enrichmentData?.physicalAcctInfo?.currencyCode || marketConfig.defaultCurrency,
           metadata: request.metadata || {},
           timestamp: Date.now()
         });
@@ -178,9 +181,9 @@ export class EnrichmentService {
         const validationResponse = await this.validationClient.validateEnrichedMessage(validationRequest);
 
         if (validationResponse.success) {
-          logger.info('Validation completed successfully, message published to Kafka', {
+          logger.info('Validation service call successful', {
             messageId: request.messageId,
-            puid: request.puid,
+            success: validationResponse.success,
             kafkaPublished: validationResponse.kafkaPublished
           });
 
@@ -216,7 +219,7 @@ export class EnrichmentService {
 
     } catch (error) {
       const processingTime = Date.now() - startTime;
-      logger.error('PACS message enrichment failed', {
+      logger.error('Financial message enrichment failed', {
         messageId: request.messageId,
         puid: request.puid,
         error: error instanceof Error ? error.message : 'Unknown error',
@@ -246,7 +249,7 @@ export class EnrichmentService {
       return 'Invalid XML payload format';
     }
 
-    if (!XMLParser.isPACSMessage(request.xmlPayload)) {
+    if (!XMLParser.isFinancialMessage(request.xmlPayload)) {
       return 'XML payload is not a valid PACS message';
     }
 
@@ -264,8 +267,8 @@ export class EnrichmentService {
 
       // Create enrichment XML block
       const enrichmentBlock = `
-  <!-- Singapore Banking Enrichment Data -->
-  <SgEnrichmentInfo>
+  <!-- Banking Enrichment Data -->
+  <EnrichmentInfo>
     <AcctLookupData>
       <ReceivedAcctId>${enrichmentData.receivedAcctId}</ReceivedAcctId>
       <NormalizedAcctId>${enrichmentData.normalizedAcctId}</NormalizedAcctId>
@@ -303,9 +306,9 @@ export class EnrichmentService {
     <EnrichmentMeta>
       <ProcessedAt>${new Date().toISOString()}</ProcessedAt>
       <ServiceVersion>1.0.0</ServiceVersion>
-      <Timezone>Asia/Singapore</Timezone>
+      <Market>${physicalInfo.country}</Market>
     </EnrichmentMeta>
-  </SgEnrichmentInfo>`;
+  </EnrichmentInfo>`;
 
       // Insert enrichment data before closing Document tag
       const enrichedXML = originalXML.replace(
@@ -493,5 +496,22 @@ export class EnrichmentService {
       case 'Utility': return 'UTILITY_SERVICES';
       default: return 'GENERAL_BANKING';
     }
+  }
+
+  /**
+   * Get market configuration from metadata with Singapore defaults
+   */
+  private getMarketConfig(metadata: { [key: string]: string } = {}): {
+    country: string;
+    defaultCurrency: string;
+    defaultAcctSys: string;
+    defaultAcctGroup: string;
+  } {
+    return {
+      country: metadata.country || process.env.COUNTRY || 'SG',
+      defaultCurrency: metadata.currency || process.env.DEFAULT_CURRENCY || 'SGD',
+      defaultAcctSys: metadata.acctSys || process.env.DEFAULT_ACCT_SYS || 'MDZ',
+      defaultAcctGroup: metadata.acctGroup || process.env.DEFAULT_ACCT_GROUP || 'SGB'
+    };
   }
 } 

@@ -54,11 +54,11 @@
     </xs:sequence>
   </xs:complexType>
 
-  <!-- Currency and Amount for Singapore (SGD) -->
+  <!-- Currency and Amount (Singapore primary, extensible) -->
   <xs:complexType name="CurrencyAndAmount">
     <xs:simpleContent>
-      <xs:extension base="pacs:SingaporeAmount">
-        <xs:attribute name="Ccy" type="pacs:SingaporeCurrency" use="required"/>
+      <xs:extension base="pacs:DecimalAmount">
+        <xs:attribute name="Ccy" type="pacs:SupportedCurrency" use="required"/>
       </xs:extension>
     </xs:simpleContent>
   </xs:complexType>
@@ -71,10 +71,10 @@
     </xs:sequence>
   </xs:complexType>
 
-  <!-- Postal Address for Singapore -->
+  <!-- Postal Address (Singapore primary, extensible) -->
   <xs:complexType name="PostalAddress">
     <xs:sequence>
-      <xs:element name="Ctry" type="pacs:SingaporeCountryCode"/>
+      <xs:element name="Ctry" type="pacs:SupportedCountryCode"/>
       <xs:element name="AdrLine" type="pacs:Max70Text" minOccurs="0" maxOccurs="2"/>
     </xs:sequence>
   </xs:complexType>
@@ -114,20 +114,28 @@
     </xs:sequence>
   </xs:complexType>
 
-  <!-- Singapore-specific simple types -->
-  <xs:simpleType name="SingaporeCurrency">
+  <!-- Supported currencies (Singapore primary, extensible) -->
+  <xs:simpleType name="SupportedCurrency">
     <xs:restriction base="xs:string">
       <xs:enumeration value="SGD"/>
+      <!-- Future currencies can be added here -->
+      <!-- <xs:enumeration value="MYR"/> -->
+      <!-- <xs:enumeration value="THB"/> -->
     </xs:restriction>
   </xs:simpleType>
 
-  <xs:simpleType name="SingaporeCountryCode">
+  <!-- Supported country codes (Singapore primary, extensible) -->
+  <xs:simpleType name="SupportedCountryCode">
     <xs:restriction base="xs:string">
       <xs:enumeration value="SG"/>
+      <!-- Future countries can be added here -->
+      <!-- <xs:enumeration value="MY"/> -->
+      <!-- <xs:enumeration value="TH"/> -->
     </xs:restriction>
   </xs:simpleType>
 
-  <xs:simpleType name="SingaporeAmount">
+  <!-- Decimal amount format -->
+  <xs:simpleType name="DecimalAmount">
     <xs:restriction base="xs:decimal">
       <xs:fractionDigits value="2"/>
       <xs:minInclusive value="0.01"/>

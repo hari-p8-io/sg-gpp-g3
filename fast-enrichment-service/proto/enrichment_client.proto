@@ -3,8 +3,8 @@ syntax = "proto3";
 package gpp.g3.enrichment;
 
 service EnrichmentService {
-  // Enrich a PACS message with additional data
-  rpc EnrichPacsMessage(EnrichmentRequest) returns (EnrichmentResponse);
+  // Enrich a financial message with additional data
+  rpc EnrichMessage(EnrichmentRequest) returns (EnrichmentResponse);
   
   // Health check for the enrichment service
   rpc HealthCheck(HealthCheckRequest) returns (HealthCheckResponse);
@@ -13,9 +13,9 @@ service EnrichmentService {
 message EnrichmentRequest {
   string message_id = 1;    // The UUID from request handler
   string puid = 2;          // The G3I identifier
-  string message_type = 3;  // PACS008, PACS007, PACS003
+  string message_type = 3;  // PACS008, PACS007, PACS003, CAMT053, etc.
   string xml_payload = 4;   // The validated XML payload
-  map<string, string> metadata = 5; // Additional context data
+  map<string, string> metadata = 5; // Additional context data (including market)
   int64 timestamp = 6;      // Original processing timestamp
 }
 

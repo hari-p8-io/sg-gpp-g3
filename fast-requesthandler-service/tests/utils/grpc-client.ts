@@ -4,15 +4,16 @@ import path from 'path';
 import fs from 'fs';
 
 interface GrpcClient {
-  ProcessPacsMessage: (request: any, callback: (error: any, response: any) => void) => void;
+  ProcessMessage: (request: any, callback: (error: any, response: any) => void) => void;
   GetMessageStatus: (request: any, callback: (error: any, response: any) => void) => void;
   HealthCheck: (request: any, callback: (error: any, response: any) => void) => void;
   GetAllMessages?: (request: any, callback: (error: any, response: any) => void) => void;
   ClearMockStorage?: (request: any, callback: (error: any, response: any) => void) => void;
   GetMockStorageSize?: (request: any, callback: (error: any, response: any) => void) => void;
+  close?: () => void;
 }
 
-interface ProcessPacsResponse {
+interface ProcessMessageResponse {
   message_id: string;
   puid: string;
   success: boolean;
@@ -55,7 +56,7 @@ class GrpcClientHelper {
     this.serverUrl = serverUrl;
     
     // Load proto definition
-    const PROTO_PATH = path.join(__dirname, '../../proto/pacs_handler.proto');
+    const PROTO_PATH = path.join(__dirname, '../../proto/message_handler.proto');
     const packageDefinition = protoLoader.loadSync(PROTO_PATH, {
       keepCase: true,
       longs: String,
@@ -64,8 +65,8 @@ class GrpcClientHelper {
       oneofs: true,
     });
 
-    const pacsProto = grpc.loadPackageDefinition(packageDefinition) as any;
-    this.client = new pacsProto.gpp.g3.requesthandler.PacsHandler(
+    const messageProto = grpc.loadPackageDefinition(packageDefinition) as any;
+    this.client = new messageProto.gpp.g3.requesthandler.MessageHandler(
       serverUrl,
       grpc.credentials.createInsecure()
     );
@@ -87,13 +88,13 @@ class GrpcClientHelper {
     throw new Error(`Service not ready after ${timeoutMs}ms`);
   }
 
-  async processPacsMessage(
+  async processMessage(
     request: {
       message_type: string;
       xml_payload: string;
       metadata?: Record<string, string>;
     }
-  ): Promise<ProcessPacsResponse> {
+  ): Promise<ProcessMessageResponse> {
     return new Promise((resolve, reject) => {
       const grpcRequest = {
         message_type: request.message_type,
@@ -101,7 +102,7 @@ class GrpcClientHelper {
         metadata: request.metadata || {},
       };
 
-      this.client.ProcessPacsMessage(grpcRequest, (error, response) => {
+      this.client.ProcessMessage(grpcRequest, (error, response) => {
         if (error) {
           reject(error);
         } else {
@@ -109,6 +110,17 @@ class GrpcClientHelper {
         }
       });
     });
+  }
+
+  // Backward compatibility method
+  async processPacsMessage(
+    request: {
+      message_type: string;
+      xml_payload: string;
+      metadata?: Record<string, string>;
+    }
+  ): Promise<ProcessMessageResponse> {
+    return this.processMessage(request);
   }
 
   async getMessageStatus(
@@ -197,8 +209,8 @@ class GrpcClientHelper {
     });
   }
 
-  // Helper method to validate Singapore-specific fields
-  static validateSingaporeFields(xmlPayload: string): {
+  // Helper method to validate market-specific fields (Singapore implementation)
+  static validateMarketFields(xmlPayload: string, market: string = 'SG'): {
     hasValidCurrency: boolean;
     hasValidCountry: boolean;
     hasValidPostalCode: boolean;
@@ -207,30 +219,34 @@ class GrpcClientHelper {
   } {
     const warnings: string[] = [];
     
-    // Check for SGD currency
-    const hasValidCurrency = xmlPayload.includes('SGD');
+    // Currently only Singapore validation is implemented
+    const expectedCurrency = 'SGD';
+    const expectedCountry = 'SG';
+    const bankCodePattern = /\b(7171|7375|7144|7339)\b/; // Singapore bank codes
+    
+    // Check for expected currency
+    const hasValidCurrency = xmlPayload.includes(expectedCurrency);
     if (!hasValidCurrency) {
-      warnings.push('No SGD currency found in XML payload');
+      warnings.push(`No ${expectedCurrency} currency found in XML payload`);
     }
 
-    // Check for SG country code
-    const hasValidCountry = xmlPayload.includes('SG');
+    // Check for expected country code
+    const hasValidCountry = xmlPayload.includes(expectedCountry);
     if (!hasValidCountry) {
-      warnings.push('No SG country code found in XML payload');
+      warnings.push(`No ${expectedCountry} country code found in XML payload`);
     }
 
     // Check for Singapore postal code pattern (6 digits)
     const postalCodePattern = /\b\d{6}\b/;
     const hasValidPostalCode = postalCodePattern.test(xmlPayload);
     if (!hasValidPostalCode) {
-      warnings.push('No valid Singapore postal code (6 digits) found in XML payload');
+      warnings.push(`No valid postal code (6 digits) found in XML payload`);
     }
 
     // Check for Singapore bank code patterns
-    const bankCodePattern = /\b(7171|7375|7144|7339)\b/; // Common Singapore bank codes
     const hasValidBankCode = bankCodePattern.test(xmlPayload);
     if (!hasValidBankCode) {
-      warnings.push('No recognized Singapore bank code found in XML payload');
+      warnings.push(`No recognized Singapore bank code found in XML payload`);
     }
 
     return {
@@ -254,9 +270,16 @@ class GrpcClientHelper {
     return puidRegex.test(puid);
   }
 
+  // Shutdown method to close the gRPC client
+  shutdown(): void {
+    if (this.client && typeof this.client.close === 'function') {
+      this.client.close();
+    }
+  }
+
   // Helper method to load test XML files
   static loadTestXML(messageType: string, variant: string = 'singapore'): string {
-    const filename = `sample_${messageType.toLowerCase()}_sg.xml`;
+    const filename = `sample_${messageType.toLowerCase()}.xml`;
     const filePath = path.join(__dirname, '../fixtures', filename);
     
     if (!fs.existsSync(filePath)) {
@@ -314,6 +337,9 @@ class GrpcClientHelper {
   }
 }
 
+// Export the main class as named export
+export { GrpcClientHelper };
+
 // Export factory function
 export function createGrpcClient(serverUrl: string = 'localhost:50051'): GrpcClientHelper {
   return new GrpcClientHelper(serverUrl);
@@ -345,7 +371,7 @@ export function validateSingaporeElements(xmlPayload: string): {
   hasSingaporeTimezone: boolean;
   warnings: string[];
 } {
-  const validation = GrpcClientHelper.validateSingaporeFields(xmlPayload);
+  const validation = GrpcClientHelper.validateMarketFields(xmlPayload, 'SG');
   
   // Check for Singapore timezone
   const hasSingaporeTimezone = xmlPayload.includes('+08:00') || xmlPayload.includes('Asia/Singapore');
@@ -359,4 +385,5 @@ export function validateSingaporeElements(xmlPayload: string): {
   };
 }
 
+// Also export as default for backward compatibility
 export default GrpcClientHelper; 

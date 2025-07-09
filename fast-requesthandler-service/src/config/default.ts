@@ -4,8 +4,8 @@ config();
 export default {
   // Cloud Spanner Configuration
   spanner: {
-    projectId: process.env.SPANNER_PROJECT_ID || 'gpp-g3-sg-local',
-    instanceId: process.env.SPANNER_INSTANCE_ID || 'sg-test-instance',
+    projectId: process.env.SPANNER_PROJECT_ID || 'gpp-g3-local',
+    instanceId: process.env.SPANNER_INSTANCE_ID || 'test-instance',
     databaseId: process.env.SPANNER_DATABASE_ID || 'safe-str-db',
     emulatorHost: process.env.SPANNER_EMULATOR_HOST || 'localhost:9010'
   },
@@ -23,8 +23,9 @@ export default {
     nodeEnv: process.env.NODE_ENV || 'development'
   },
 
-  // Singapore Market Configuration
-  singapore: {
+  // Market Configuration (defaults to Singapore)
+  market: {
+    code: process.env.MARKET_CODE || 'SG',
     country: process.env.COUNTRY || 'SG',
     defaultCurrency: process.env.DEFAULT_CURRENCY || 'SGD',
     timezone: process.env.TIMEZONE || 'Asia/Singapore'

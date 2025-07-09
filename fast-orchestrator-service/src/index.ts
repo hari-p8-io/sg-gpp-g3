@@ -12,17 +12,20 @@ const KAFKA_BROKERS = (process.env.KAFKA_BROKERS || 'localhost:9092').split(',')
 const KAFKA_TOPIC = process.env.KAFKA_TOPIC || 'validated-messages';
 const KAFKA_GROUP_ID = process.env.KAFKA_GROUP_ID || 'fast-orchestrator-group';
 
-// VAM-specific Kafka topics
+// Market-configurable Kafka topics
 const VAM_KAFKA_TOPIC = process.env.VAM_KAFKA_TOPIC || 'vam-messages';
 const VAM_RESPONSE_TOPIC = process.env.VAM_RESPONSE_TOPIC || 'vam-responses';
 const MDZ_KAFKA_TOPIC = process.env.MDZ_KAFKA_TOPIC || 'mdz-messages';
-
-// **NEW: Limit Check Kafka topic**
 const LIMITCHECK_KAFKA_TOPIC = process.env.LIMITCHECK_KAFKA_TOPIC || 'limitcheck-messages';
 
-// Service URLs
+// Service URLs (market-configurable)
 const VAM_MEDIATION_SERVICE_URL = process.env.VAM_MEDIATION_SERVICE_URL || 'http://localhost:3005';
 const ACCOUNTING_SERVICE_URL = process.env.ACCOUNTING_SERVICE_URL || 'http://localhost:8002';
+const LIMITCHECK_SERVICE_URL = process.env.LIMITCHECK_SERVICE_URL || 'http://localhost:8003';
+
+// Market configuration
+const MARKET_COUNTRY = process.env.COUNTRY || 'SG';
+const MARKET_CURRENCY = process.env.DEFAULT_CURRENCY || 'SGD';
 
 // Express app setup
 const app = express();
@@ -501,35 +504,65 @@ async function addOrchestrationStep(messageId: string, stepName: string, status:
   orchestrationStatus.set(messageId, orchestration);
 }
 
-// **UPDATED: Determine route based on auth method and account system**
+// **UPDATED: Determine route based on auth method, account system, and market configuration**
 function determineRoute(validatedMessage: any): string {
   const { messageType, enrichmentData } = validatedMessage;
   const acctSys = enrichmentData?.physicalAcctInfo?.acctSys;
   const authMethod = enrichmentData?.authMethod;
+  const country = enrichmentData?.physicalAcctInfo?.country || process.env.COUNTRY || 'SG';
+  
+  // Market-specific routing configuration
+  const marketConfig = getMarketRoutingConfig(country);
   
   // Auth method takes precedence for routing decisions
   if (authMethod === 'GROUPLIMIT') {
     if (acctSys === 'VAM') {
-      return 'grouplimit_vam_flow';
+      return `grouplimit_${marketConfig.vamFlow}`;
     } else if (acctSys === 'MDZ') {
-      return 'grouplimit_mdz_flow';
+      return `grouplimit_${marketConfig.mdzFlow}`;
     }
-    return 'grouplimit_default_flow';
+    return `grouplimit_${marketConfig.defaultFlow}`;
   }
   
-  // Legacy routing based on account system
+  // Standard routing based on account system
   if (acctSys === 'VAM') {
-    return 'vam_flow';
+    return marketConfig.vamFlow;
   } else if (acctSys === 'MDZ') {
-    return 'mdz_flow';
+    return marketConfig.mdzFlow;
   }
   
-  // Default routing based on message type
-  if (messageType === 'PACS008') {
-    return 'standard_flow';
+  // Default routing based on message type and market
+  if (messageType === 'PACS008' || messageType === 'CAMT053') {
+    return marketConfig.standardFlow;
   }
   
-  return 'default_flow';
+  return marketConfig.defaultFlow;
+}
+
+// Get market-specific routing configuration
+function getMarketRoutingConfig(country: string): any {
+  const marketConfigs: Record<string, any> = {
+    'SG': {
+      vamFlow: 'vam_flow',
+      mdzFlow: 'mdz_flow',
+      standardFlow: 'standard_flow',
+      defaultFlow: 'default_flow'
+    },
+    'MY': {
+      vamFlow: 'my_vam_flow',
+      mdzFlow: 'my_mdz_flow',
+      standardFlow: 'my_standard_flow',
+      defaultFlow: 'my_default_flow'
+    },
+    'TH': {
+      vamFlow: 'th_vam_flow',
+      mdzFlow: 'th_mdz_flow',
+      standardFlow: 'th_standard_flow',
+      defaultFlow: 'th_default_flow'
+    }
+  };
+  
+  return marketConfigs[country] || marketConfigs['SG']; // Default to Singapore
 }
 
 // Route to MDZ mediation service (placeholder)

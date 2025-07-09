@@ -1,8 +1,8 @@
-# Fast Orchestrator Service - PACS Message Implementation Plan
+# Fast Orchestrator Service - Financial Message Implementation Plan
 
 ## Overview
 
-This document outlines the implementation plan for the `fast-orchestrator-service` to handle PACS message orchestration via Kafka consumption, receiving validated JSON messages from `fast-validation-service` and coordinating further processing through the payment pipeline for the Singapore market.
+This document outlines the implementation plan for the `fast-orchestrator-service` to handle financial message orchestration via Kafka consumption, receiving validated JSON messages from `fast-validation-service` and coordinating further processing through the payment pipeline for multiple markets.
 
 ## Requirements Summary
 
@@ -11,7 +11,7 @@ This document outlines the implementation plan for the `fast-orchestrator-servic
 - Route messages to appropriate downstream services based on message type and business rules
 - Maintain comprehensive audit trail and status tracking
 - Handle error scenarios and dead letter processing
-- Focus on Singapore market payment orchestration
+- Support multiple markets with configurable routing rules
 
 ## Architecture Changes
 
@@ -26,7 +26,7 @@ This document outlines the implementation plan for the `fast-orchestrator-servic
 - **Service Coordination**: Manage calls to downstream services
 - **Audit Trail**: Comprehensive logging and tracking
 - **Error Handling**: Dead letter queues and retry mechanisms
-- **Singapore Payment Focus**: SG-specific routing and processing rules
+- **Multi-Market Support**: Configurable routing and processing rules
 
 ## Technology Stack
 
