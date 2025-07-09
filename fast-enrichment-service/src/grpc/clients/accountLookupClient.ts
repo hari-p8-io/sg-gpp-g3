@@ -50,19 +50,19 @@ export class AccountLookupClient {
 
       // Create client
       this.client = new AccountLookupService(
-        config.accountLookupServiceUrl,
+        config.grpcServices.accountLookupUrl,
         grpc.credentials.createInsecure()
       );
 
       this.connected = true;
       logger.info('Account lookup client initialized', {
-        serviceUrl: config.accountLookupServiceUrl
+        serviceUrl: config.grpcServices.accountLookupUrl
       });
 
     } catch (error) {
       logger.error('Failed to initialize account lookup client', {
         error: error instanceof Error ? error.message : 'Unknown error',
-        serviceUrl: config.accountLookupServiceUrl
+        serviceUrl: config.grpcServices.accountLookupUrl
       });
       this.connected = false;
     }

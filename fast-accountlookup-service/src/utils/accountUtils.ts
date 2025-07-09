@@ -55,7 +55,19 @@ export class AccountUtils {
     return SINGAPORE_BANKING_CONSTANTS.BANK_CODES.ANZ;
   }
 
-  static getAccountSystem(accountType: string): string {
+  static getAccountSystem(accountType: string, accountId?: string): string {
+    // Check for VAM routing based on specific account patterns
+    if (accountId) {
+      const normalizedId = this.normalizeAccountId(accountId);
+      // Route to VAM system for specific test accounts or accounts containing "VAM"
+      if (normalizedId.includes('VAM') || 
+          normalizedId === 'VAMTEST123' ||
+          normalizedId === '999888777' ||
+          normalizedId.startsWith('VAM')) {
+        return SINGAPORE_BANKING_CONSTANTS.ACCOUNT_SYSTEMS.VAM;
+      }
+    }
+
     switch (accountType) {
       case ACCOUNT_TYPES.CORPORATE:
       case ACCOUNT_TYPES.GOVERNMENT:
@@ -111,5 +123,13 @@ export class AccountUtils {
     if (normalizedId.includes('ERROR') || normalizedId.includes('FAIL')) return 'PROCESSING_ERROR';
     
     return 'UNKNOWN_ERROR';
+  }
+
+  static isVamAccount(accountId: string): boolean {
+    const normalizedId = this.normalizeAccountId(accountId);
+    return normalizedId.includes('VAM') || 
+           normalizedId === 'VAMTEST123' ||
+           normalizedId === '999888777' ||
+           normalizedId.startsWith('VAM');
   }
 } 

@@ -11,7 +11,8 @@ export const SINGAPORE_BANKING_CONSTANTS = {
   ACCOUNT_SYSTEMS: {
     MDZ: "MDZ", // Main clearing system
     MEPS: "MEPS", // Electronic payment system
-    FAST: "FAST" // Fast payment system
+    FAST: "FAST", // Fast payment system
+    VAM: "VAM" // Value-added services mediation system
   },
   ACCOUNT_GROUPS: {
     SGB: "SGB", // Singapore Banking Group

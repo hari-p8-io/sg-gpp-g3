@@ -128,7 +128,55 @@ export interface EnrichmentResponse {
   success: boolean;
   enriched_payload: string;
   error_message: string;
-  enrichment_data: Record<string, string>;
+  enrichment_data: EnrichmentData;
   processed_at: number;
   next_service: string;
+}
+
+export interface EnrichmentData {
+  received_acct_id: string;
+  lookup_status_code: number;
+  lookup_status_desc: string;
+  normalized_acct_id: string;
+  matched_acct_id: string;
+  partial_match: string;
+  is_physical: string;
+  physical_acct_info?: PhysicalAccountInfo;
+  auth_method: string;
+}
+
+export interface PhysicalAccountInfo {
+  acct_id: string;
+  acct_sys: string;
+  acct_group: string;
+  country: string;
+  branch_id?: string;
+  acct_attributes: AccountAttributes;
+  acct_ops_attributes: AccountOpsAttributes;
+  bicfi: string;
+  currency_code: string;
+}
+
+export interface AccountAttributes {
+  acct_type: string;
+  acct_category: string;
+  acct_purpose: string;
+}
+
+export interface AccountOpsAttributes {
+  is_active: string;
+  acct_status: string;
+  open_date: string;
+  expiry_date: string;
+  restraints: Restraints;
+}
+
+export interface Restraints {
+  stop_all: string;
+  stop_debits: string;
+  stop_credits: string;
+  stop_atm: string;
+  stop_eft_pos: string;
+  stop_unknown: string;
+  warnings: string[];
 } 

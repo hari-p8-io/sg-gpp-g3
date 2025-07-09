@@ -1,6 +1,8 @@
 import { v4 as uuidv4 } from 'uuid';
 import { XMLParser } from '../utils/xmlParser';
 import { AccountLookupClient, AccountLookupRequest } from '../grpc/clients/accountLookupClient';
+import { ReferenceDataClient } from '../grpc/clients/referenceDataClient';
+import { ValidationClient, ValidationRequest } from '../grpc/clients/validationClient';
 import { logger } from '../utils/logger';
 import { config } from '../config/default';
 
@@ -26,11 +28,15 @@ export interface EnrichmentResponse {
 
 export class EnrichmentService {
   private accountLookupClient: AccountLookupClient;
+  private referenceDataClient: ReferenceDataClient;
+  private validationClient: ValidationClient;
   private useMockMode: boolean;
 
   constructor() {
-    this.useMockMode = config.environment === 'test' || config.useMockAccountLookup;
     this.accountLookupClient = new AccountLookupClient();
+    this.referenceDataClient = new ReferenceDataClient();
+    this.validationClient = new ValidationClient('localhost:50053');
+    this.useMockMode = process.env.NODE_ENV === 'test' || process.env.USE_MOCK_MODE === 'true';
   }
 
   async enrichPacsMessage(request: EnrichmentRequest): Promise<EnrichmentResponse> {
@@ -111,27 +117,102 @@ export class EnrichmentService {
         lookupSource: lookupResponse.lookupSource
       });
 
+      // Call reference data service to get auth method
+      let authMethod: string = 'AFPONLY'; // default
+      try {
+        const referenceDataResponse = await this.referenceDataClient.lookupAuthMethod({
+          messageId: request.messageId,
+          puid: request.puid,
+          acctSys: lookupResponse.enrichmentData?.physicalAcctInfo?.acctSys || 'MDZ',
+          acctGrp: lookupResponse.enrichmentData?.physicalAcctInfo?.acctGroup || 'SGB',
+          acctId: cdtrAcct,
+          country: lookupResponse.enrichmentData?.physicalAcctInfo?.country || 'SG',
+          currencyCode: lookupResponse.enrichmentData?.physicalAcctInfo?.currencyCode || 'SGD',
+          metadata: request.metadata || {},
+          timestamp: Date.now()
+        });
+
+        if (referenceDataResponse.success && referenceDataResponse.authMethod) {
+          authMethod = referenceDataResponse.authMethod;
+          logger.info('Reference data lookup completed', {
+            messageId: request.messageId,
+            authMethod
+          });
+        } else {
+          logger.warn('Reference data lookup failed, using default auth method', {
+            messageId: request.messageId,
+            error: referenceDataResponse.errorMessage
+          });
+        }
+      } catch (error) {
+        logger.warn('Reference data service unavailable, using default auth method', {
+          messageId: request.messageId,
+          error: error instanceof Error ? error.message : 'Unknown error'
+        });
+      }
+
+      // Add auth method to enrichment data
+      lookupResponse.enrichmentData.authMethod = authMethod;
+
       // Create enriched XML payload
       const enrichedPayload = this.createEnrichedXML(request.xmlPayload, lookupResponse.enrichmentData);
 
-      const processingTime = Date.now() - startTime;
-      
-      logger.info('PACS message enrichment completed', {
+      logger.info('Enrichment completed, calling validation service', {
         messageId: request.messageId,
         puid: request.puid,
-        processingTime,
-        enrichmentDataPresent: !!lookupResponse.enrichmentData
+        authMethod
       });
 
-      return {
-        messageId: request.messageId,
-        puid: request.puid,
-        success: true,
-        enrichedPayload,
-        enrichmentData: lookupResponse.enrichmentData,
-        processedAt: Date.now(),
-        nextService: 'fast-validation-service'
-      };
+      // Call validation service as per the flow specification
+      try {
+        const validationRequest: ValidationRequest = {
+          messageId: request.messageId,
+          puid: request.puid,
+          messageType: request.messageType,
+          enrichedXmlPayload: enrichedPayload,
+          enrichmentData: lookupResponse.enrichmentData,
+          timestamp: Date.now(),
+          metadata: request.metadata
+        };
+
+        const validationResponse = await this.validationClient.validateEnrichedMessage(validationRequest);
+
+        if (validationResponse.success) {
+          logger.info('Validation completed successfully, message published to Kafka', {
+            messageId: request.messageId,
+            puid: request.puid,
+            kafkaPublished: validationResponse.kafkaPublished
+          });
+
+          return {
+            messageId: request.messageId,
+            puid: request.puid,
+            success: true,
+            enrichedPayload,
+            enrichmentData: lookupResponse.enrichmentData,
+            processedAt: Date.now(),
+            nextService: 'fast-orchestrator-service'
+          };
+        } else {
+          logger.error('Validation failed', {
+            messageId: request.messageId,
+            error: validationResponse.errorMessage
+          });
+
+          return this.createErrorResponse(request, 
+            `Validation failed: ${validationResponse.errorMessage}`
+          );
+        }
+      } catch (error) {
+        logger.error('Validation service call failed', {
+          messageId: request.messageId,
+          error: error instanceof Error ? error.message : 'Unknown error'
+        });
+
+        return this.createErrorResponse(request, 
+          `Validation service unavailable: ${error instanceof Error ? error.message : 'Unknown error'}`
+        );
+      }
 
     } catch (error) {
       const processingTime = Date.now() - startTime;
@@ -213,7 +294,7 @@ export class EnrichmentService {
           <StopAll>${physicalInfo.acctOpsAttributes.restraints.stopAll}</StopAll>
           <StopDebits>${physicalInfo.acctOpsAttributes.restraints.stopDebits}</StopDebits>
           <StopCredits>${physicalInfo.acctOpsAttributes.restraints.stopCredits}</StopCredits>
-          <Warnings>${physicalInfo.acctOpsAttributes.restraints.warnings}</Warnings>
+          <Warnings>${Array.isArray(physicalInfo.acctOpsAttributes.restraints.warnings) ? physicalInfo.acctOpsAttributes.restraints.warnings.join(', ') : physicalInfo.acctOpsAttributes.restraints.warnings}</Warnings>
         </Restraints>
       </AcctOpsAttributes>
       <Bicfi>${physicalInfo.bicfi}</Bicfi>
@@ -376,7 +457,7 @@ export class EnrichmentService {
               stopAtm: false,
               stopEftPos: false,
               stopUnknown: false,
-              warnings: cdtrAcct.includes('INACTIVE') ? 'Account suspended' : 'None'
+              warnings: cdtrAcct.includes('INACTIVE') ? ['Account suspended'] : []
             }
           },
           bicfi: 'ANZBSG3MXXX',

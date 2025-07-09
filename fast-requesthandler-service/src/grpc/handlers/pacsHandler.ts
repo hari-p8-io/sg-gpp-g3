@@ -101,6 +101,7 @@ export class PacsHandler {
       await this.spannerClient.updateMessageStatus(messageId, 'VALIDATED', new Date());
 
       // Step 5: Forward to enrichment service (async, don't block response)
+      // The enrichment service will handle the entire pipeline: accountlookup -> referencedata -> validation -> orchestrator
       this.forwardToEnrichmentService(messageId, puid, message_type, xml_payload, metadata || {})
         .catch(error => {
           console.error(`❌ Failed to forward message ${puid} to enrichment service:`, error);
@@ -152,14 +153,14 @@ export class PacsHandler {
       );
 
       if (response.success) {
-        console.log(`✅ Message ${puid} successfully enriched`);
-        await this.spannerClient.updateMessageStatus(messageId, 'ENRICHED', new Date());
+        console.log(`✅ Message ${puid} successfully processed through enrichment pipeline`);
+        await this.spannerClient.updateMessageStatus(messageId, 'PIPELINE_COMPLETE', new Date());
       } else {
-        console.error(`❌ Enrichment failed for ${puid}: ${response.error_message}`);
+        console.error(`❌ Enrichment pipeline failed for ${puid}: ${response.error_message}`);
         await this.spannerClient.updateMessageStatus(messageId, 'FAILED', new Date());
       }
     } catch (error) {
-      console.error(`❌ Enrichment service error for ${puid}:`, error);
+      console.error(`❌ Enrichment pipeline error for ${puid}:`, error);
       await this.spannerClient.updateMessageStatus(messageId, 'FAILED', new Date());
       throw error;
     }

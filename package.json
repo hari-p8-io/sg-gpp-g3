@@ -1,37 +1,28 @@
 {
-  "name": "gpp-g3-monorepo",
+  "name": "gppg3-orchestration-tests",
   "version": "1.0.0",
-  "description": "GPP G3 Initiative - Monorepo for microservices",
-  "private": true,
-  "workspaces": [
-    "fast-requesthandler-service",
-    "fast-enrichment-service",
-    "fast-validation-service",
-    "fast-orchestrator-service"
-  ],
+  "description": "Orchestration tests for VAM/MDZ routing in GPP G3",
+  "main": "test-orchestration.js",
   "scripts": {
-    "install:ts-services": "npm install && npm run bootstrap",
-    "bootstrap": "npm install --workspaces",
-    "build": "npm run build --workspaces",
-    "test": "npm run test --workspaces",
-    "dev": "npm run dev --workspaces",
-    "lint": "npm run lint --workspaces",
-    "clean": "npm run clean --workspaces && rm -rf node_modules",
-    "docker:build": "docker-compose -f shared/docker/docker-compose.yml build",
-    "docker:up": "docker-compose -f shared/docker/docker-compose.yml up",
-    "docker:down": "docker-compose -f shared/docker/docker-compose.yml down",
-    "java:build": "mvn clean install",
-    "java:test": "mvn test"
+    "test": "node test-orchestration.js",
+    "start-orchestration": "./start-orchestration-test.sh",
+    "start-orchestration-no-test": "./start-orchestration-test.sh --no-test"
   },
-  "devDependencies": {
-    "@types/node": "^20.0.0",
-    "typescript": "^5.0.0",
-    "concurrently": "^8.0.0"
+  "dependencies": {
+    "@grpc/grpc-js": "^1.13.4",
+    "@grpc/proto-loader": "^0.7.15",
+    "axios": "^1.10.0",
+    "kafkajs": "^2.2.4",
+    "uuid": "^9.0.1"
   },
-  "engines": {
-    "node": ">=18.0.0",
-    "npm": ">=9.0.0"
-  },
-  "author": "GPP G3 Team",
-  "license": "UNLICENSED"
-} 
+  "keywords": [
+    "orchestration",
+    "vam",
+    "mdz",
+    "kafka",
+    "microservices",
+    "testing"
+  ],
+  "author": "GPPG3 Team",
+  "license": "ISC"
+}
