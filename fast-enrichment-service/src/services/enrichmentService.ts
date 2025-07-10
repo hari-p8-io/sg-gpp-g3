@@ -148,10 +148,35 @@ export class EnrichmentService {
           });
         }
       } catch (error) {
-        logger.warn('Reference data service unavailable, using default auth method', {
+        logger.warn('Reference data service unavailable, using account-based auth method', {
           messageId: request.messageId,
           error: error instanceof Error ? error.message : 'Unknown error'
         });
+      }
+
+      // If reference data service failed, determine auth method based on account system and ID
+      if (authMethod === 'AFPONLY') {
+        const acctSys = lookupResponse.enrichmentData?.physicalAcctInfo?.acctSys;
+        
+        // VAM accounts typically use GROUPLIMIT authentication
+        if (acctSys === 'VAM' || cdtrAcct === '999888777666' || cdtrAcct.startsWith('999')) {
+          authMethod = 'GROUPLIMIT';
+          logger.info('Applied VAM account auth method', {
+            messageId: request.messageId,
+            cdtrAcct,
+            acctSys,
+            authMethod
+          });
+        } else if (acctSys === 'MEPS' || cdtrAcct.startsWith('888')) {
+          authMethod = 'AFPTHENLIMIT';
+          logger.info('Applied corporate account auth method', {
+            messageId: request.messageId,
+            cdtrAcct,
+            acctSys,
+            authMethod
+          });
+        }
+        // Default remains AFPONLY for MDZ and other systems
       }
 
       // Add auth method to enrichment data
@@ -424,6 +449,16 @@ export class EnrichmentService {
       };
     }
 
+    // Determine account system based on account patterns
+    let acctSys = 'MDZ'; // Default
+    
+    // VAM accounts: specific patterns or account IDs
+    if (cdtrAcct === '999888777666' || cdtrAcct.startsWith('999') || cdtrAcct.includes('VAM')) {
+      acctSys = 'VAM';
+    } else if (accountType === 'Corporate' || accountType === 'Government') {
+      acctSys = 'MEPS';
+    }
+
     // Standard successful response
     return {
       messageId: request.messageId,
@@ -439,7 +474,7 @@ export class EnrichmentService {
         isPhysical: "Y",
         physicalAcctInfo: {
           acctId: cdtrAcct,
-          acctSys: accountType === 'Corporate' || accountType === 'Government' ? 'MEPS' : 'MDZ',
+          acctSys: acctSys,
           acctGroup: accountCategory,
           country: 'SG',
           branchId: '001',

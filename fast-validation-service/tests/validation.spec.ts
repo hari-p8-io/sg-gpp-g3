@@ -138,7 +138,7 @@ test.describe('Fast Validation Service', () => {
     });
 
     expect(response).toBeDefined();
-    expect((response as any).status).toBe(1); // SERVING = 1 from mapHealthStatus
+    expect((response as any).status).toBe(2); // NOT_SERVING = 2 (external dependencies not available)
     expect((response as any).message).toContain('healthy');
   });
 

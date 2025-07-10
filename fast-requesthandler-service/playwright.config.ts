@@ -1,7 +1,7 @@
 import { defineConfig } from '@playwright/test';
 
 export default defineConfig({
-  testDir: './tests/e2e',
+  testDir: './tests',
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
@@ -14,6 +14,10 @@ export default defineConfig({
     {
       name: 'Singapore PACS Processing',
       testDir: './tests/e2e/singapore',
+    },
+    {
+      name: 'PW-Core Integration',
+      testMatch: '**/simple-pw-core-test.spec.ts',
     },
   ],
   webServer: {

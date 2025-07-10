@@ -38,13 +38,13 @@ export class EnrichmentClient {
     }
   }
 
-  async enrichPacsMessage(request: EnrichmentRequest): Promise<EnrichmentResponse> {
+  async enrichMessage(request: EnrichmentRequest): Promise<EnrichmentResponse> {
     return new Promise((resolve, reject) => {
       if (!this.client) {
         return reject(new Error('Enrichment client not initialized'));
       }
 
-      this.client.EnrichPacsMessage(request, (error: any, response: any) => {
+      this.client.EnrichMessage(request, (error: any, response: any) => {
         if (error) {
           console.error('❌ Enrichment service error:', error);
           reject(error);
@@ -99,7 +99,7 @@ export class EnrichmentClient {
 
     try {
       // Set a timeout for the enrichment call
-      const enrichmentPromise = this.enrichPacsMessage(request);
+      const enrichmentPromise = this.enrichMessage(request);
       const timeoutPromise = new Promise<never>((_, reject) => {
         setTimeout(() => reject(new Error('Enrichment timeout')), timeout);
       });

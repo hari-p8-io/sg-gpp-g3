@@ -94,10 +94,17 @@ export class XMLParserUtil {
     try {
       // Try different paths for CdtrAcct
       const paths = [
+        // PACS008 paths
         'FIToFICstmrCdtTrf?.CdtTrfTxInf?.CdtrAcct?.Id?.Othr?.Id',
         'FIToFICstmrCdtTrf?.CdtTrfTxInf?.CdtrAcct?.Id?.IBAN',
         'CstmrCdtTrfInitn?.CdtTrfTxInf?.CdtrAcct?.Id?.Othr?.Id',
-        'CstmrCdtTrfInitn?.CdtTrfTxInf?.CdtrAcct?.Id?.IBAN'
+        'CstmrCdtTrfInitn?.CdtTrfTxInf?.CdtrAcct?.Id?.IBAN',
+        // PACS007 reversal paths
+        'FIToFIPmtRvsl?.TxInf?.OrgnlTxRef?.CdtrAcct?.Id?.Othr?.Id',
+        'FIToFIPmtRvsl?.TxInf?.OrgnlTxRef?.CdtrAcct?.Id?.IBAN',
+        // PACS003 direct debit paths
+        'FIToFICstmrDrctDbt?.DrctDbtTxInf?.CdtrAcct?.Id?.Othr?.Id',
+        'FIToFICstmrDrctDbt?.DrctDbtTxInf?.CdtrAcct?.Id?.IBAN'
       ];
 
       for (const path of paths) {
@@ -115,10 +122,17 @@ export class XMLParserUtil {
   private extractCurrency(document: any): string | undefined {
     try {
       const paths = [
+        // PACS008 paths
         'FIToFICstmrCdtTrf?.CdtTrfTxInf?.IntrBkSttlmAmt?.@_Ccy',
         'FIToFICstmrCdtTrf?.CdtTrfTxInf?.InstdAmt?.@_Ccy',
         'CstmrCdtTrfInitn?.CdtTrfTxInf?.IntrBkSttlmAmt?.@_Ccy',
-        'CstmrCdtTrfInitn?.CdtTrfTxInf?.InstdAmt?.@_Ccy'
+        'CstmrCdtTrfInitn?.CdtTrfTxInf?.InstdAmt?.@_Ccy',
+        // PACS007 reversal paths
+        'FIToFIPmtRvsl?.TxInf?.OrgnlTxRef?.IntrBkSttlmAmt?.@_Ccy',
+        'FIToFIPmtRvsl?.TxInf?.OrgnlTxRef?.InstdAmt?.@_Ccy',
+        // PACS003 direct debit paths
+        'FIToFICstmrDrctDbt?.DrctDbtTxInf?.IntrBkSttlmAmt?.@_Ccy',
+        'FIToFICstmrDrctDbt?.DrctDbtTxInf?.InstdAmt?.@_Ccy'
       ];
 
       for (const path of paths) {
@@ -136,10 +150,24 @@ export class XMLParserUtil {
   private extractCountry(document: any): string | undefined {
     try {
       const paths = [
+        // Check creditor postal address first
+        'FIToFICstmrCdtTrf?.CdtTrfTxInf?.Cdtr?.PstlAdr?.Ctry',
+        // Check debtor postal address
+        'FIToFICstmrCdtTrf?.CdtTrfTxInf?.Dbtr?.PstlAdr?.Ctry',
+        // Check agent addresses as fallback
         'FIToFICstmrCdtTrf?.CdtTrfTxInf?.CdtrAgt?.FinInstnId?.PstlAdr?.Ctry',
         'FIToFICstmrCdtTrf?.CdtTrfTxInf?.DbtrAgt?.FinInstnId?.PstlAdr?.Ctry',
+        // Check for other message types
+        'CstmrCdtTrfInitn?.CdtTrfTxInf?.Cdtr?.PstlAdr?.Ctry',
+        'CstmrCdtTrfInitn?.CdtTrfTxInf?.Dbtr?.PstlAdr?.Ctry',
         'CstmrCdtTrfInitn?.CdtTrfTxInf?.CdtrAgt?.FinInstnId?.PstlAdr?.Ctry',
-        'CstmrCdtTrfInitn?.CdtTrfTxInf?.DbtrAgt?.FinInstnId?.PstlAdr?.Ctry'
+        'CstmrCdtTrfInitn?.CdtTrfTxInf?.DbtrAgt?.FinInstnId?.PstlAdr?.Ctry',
+        // Check for PACS007 reversal messages
+        'FIToFIPmtRvsl?.TxInf?.OrgnlTxRef?.Cdtr?.PstlAdr?.Ctry',
+        'FIToFIPmtRvsl?.TxInf?.OrgnlTxRef?.Dbtr?.PstlAdr?.Ctry',
+        // Check for PACS003 direct debit messages
+        'FIToFICstmrDrctDbt?.DrctDbtTxInf?.Cdtr?.PstlAdr?.Ctry',
+        'FIToFICstmrDrctDbt?.DrctDbtTxInf?.Dbtr?.PstlAdr?.Ctry'
       ];
 
       for (const path of paths) {

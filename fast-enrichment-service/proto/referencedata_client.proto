@@ -1,1 +1,64 @@
- 
+syntax = "proto3";
+
+package gpp.g3.referencedata;
+
+service ReferenceDataService {
+  // Lookup authentication method based on account information
+  rpc LookupAuthMethod(AuthMethodRequest) returns (AuthMethodResponse);
+  
+  // Health check for the reference data service
+  rpc HealthCheck(HealthCheckRequest) returns (HealthCheckResponse);
+}
+
+message AuthMethodRequest {
+  string message_id = 1;               // UUID for tracking
+  string puid = 2;                     // G3I identifier
+  string acct_sys = 3;                 // Account system (MDZ, VAM, etc.)
+  string acct_grp = 4;                 // Account group (SGB, etc.)
+  string acct_id = 5;                  // Account ID
+  string country = 6;                  // Country code (SG)
+  string currency_code = 7;            // Currency code (SGD)
+  map<string, string> metadata = 8;    // Additional context
+  int64 timestamp = 9;                 // Request timestamp
+}
+
+message AuthMethodResponse {
+  string message_id = 1;               // Echo back UUID
+  string puid = 2;                     // Echo back G3I identifier
+  bool success = 3;                    // Whether lookup was successful
+  string auth_method = 4;              // AFPONLY, AFPTHENLIMIT, GROUPLIMIT
+  string error_message = 5;            // Error details if success = false
+  string error_code = 6;               // Categorized error code
+  ReferenceDataDetails ref_data_details = 7; // Additional reference data
+  int64 processed_at = 8;              // When lookup completed
+  string lookup_source = 9;            // Source of lookup (STUB, CACHE, DATABASE)
+}
+
+message ReferenceDataDetails {
+  string acct_sys = 1;                 // Account system
+  string acct_grp = 2;                 // Account group
+  string acct_id = 3;                  // Account ID
+  string country = 4;                  // Country
+  string currency_code = 5;            // Currency code
+  string auth_method = 6;              // Authentication method
+  string risk_level = 7;               // Risk level (LOW, MEDIUM, HIGH)
+  string limit_profile = 8;            // Limit profile identifier
+  bool requires_approval = 9;          // Whether requires approval
+  map<string, string> additional_attributes = 10; // Additional attributes
+}
+
+message HealthCheckRequest {
+  string service = 1;
+}
+
+message HealthCheckResponse {
+  enum ServingStatus {
+    UNKNOWN = 0;
+    SERVING = 1;
+    NOT_SERVING = 2;
+    SERVICE_UNKNOWN = 3;
+  }
+  ServingStatus status = 1;
+  string message = 2;
+  int64 timestamp = 3;
+} 

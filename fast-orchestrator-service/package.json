@@ -10,6 +10,7 @@
     "test": "playwright test",
     "test:headed": "playwright test --headed",
     "test:debug": "playwright test --debug",
+    "test:e2e": "playwright test",
     "clean": "rm -rf dist",
     "lint": "eslint src/**/*.ts",
     "format": "prettier --write src/**/*.ts"
@@ -24,7 +25,8 @@
     "cors": "^2.8.5",
     "helmet": "^7.0.0",
     "morgan": "^1.10.0",
-    "axios": "^1.6.0"
+    "axios": "^1.6.0",
+    "@gpp/pw-core": "^1.0.0"
   },
   "devDependencies": {
     "@types/node": "^22.5.1",

@@ -17,10 +17,10 @@ const VAM_KAFKA_TOPIC = process.env.VAM_KAFKA_TOPIC || 'vam-messages';
 const VAM_RESPONSE_TOPIC = process.env.VAM_RESPONSE_TOPIC || 'vam-responses';
 const MDZ_KAFKA_TOPIC = process.env.MDZ_KAFKA_TOPIC || 'mdz-messages';
 const LIMITCHECK_KAFKA_TOPIC = process.env.LIMITCHECK_KAFKA_TOPIC || 'limitcheck-messages';
+const ACCOUNTING_KAFKA_TOPIC = process.env.ACCOUNTING_KAFKA_TOPIC || 'accounting-messages';
 
 // Service URLs (market-configurable)
 const VAM_MEDIATION_SERVICE_URL = process.env.VAM_MEDIATION_SERVICE_URL || 'http://localhost:3005';
-const ACCOUNTING_SERVICE_URL = process.env.ACCOUNTING_SERVICE_URL || 'http://localhost:8002';
 const LIMITCHECK_SERVICE_URL = process.env.LIMITCHECK_SERVICE_URL || 'http://localhost:8003';
 
 // Market configuration
@@ -172,6 +172,8 @@ async function orchestrateMessage(messageId: string, validatedMessage: any): Pro
     const acctSys = validatedMessage.enrichmentData?.physicalAcctInfo?.acctSys;
     const authMethod = validatedMessage.enrichmentData?.authMethod;
     console.log(`🔄 Processing message ${messageId} with account system: ${acctSys}, auth method: ${authMethod}`);
+    console.log(`🔍 DEBUG: Full enrichment data structure:`, JSON.stringify(validatedMessage.enrichmentData, null, 2));
+    console.log(`🔍 DEBUG: Full validated message structure:`, JSON.stringify(validatedMessage, null, 2));
 
     if (acctSys === 'VAM') {
       await handleVAMFlow(messageId, validatedMessage);
@@ -410,19 +412,19 @@ async function sendToVAMMediation(validatedMessage: any): Promise<void> {
   });
 }
 
-// Send message to accounting service
+// Send message to accounting service via Kafka
 async function sendToAccountingService(messageId: string, validatedMessage: any): Promise<void> {
   await addOrchestrationStep(messageId, 'accounting_service', 'started');
   
   try {
-    console.log(`💰 Sending message ${messageId} to accounting service`);
+    console.log(`💰 Sending message ${messageId} to accounting service via Kafka`);
     
     // Prepare accounting payload
     const accountingPayload = {
       messageId: validatedMessage.messageId,
       puid: validatedMessage.puid,
       messageType: validatedMessage.messageType,
-      authMethod: validatedMessage.enrichmentData?.authMethod, // **NEW: Include auth method**
+      authMethod: validatedMessage.enrichmentData?.authMethod,
       amount: validatedMessage.enrichmentData?.messageData?.amount || validatedMessage.jsonPayload?.amount,
       currency: validatedMessage.enrichmentData?.messageData?.currency || 'SGD',
       debtorAccount: validatedMessage.enrichmentData?.messageData?.debtorAccount,
@@ -433,21 +435,29 @@ async function sendToAccountingService(messageId: string, validatedMessage: any)
       sourceService: 'fast-orchestrator-service'
     };
     
-    // Call accounting service
-    const response = await axios.post(`${ACCOUNTING_SERVICE_URL}/api/v1/accounting/process`, accountingPayload, {
-      timeout: 30000,
-      headers: {
-        'Content-Type': 'application/json',
-        'x-request-id': messageId
-      }
+    // Send to accounting service via Kafka
+    await producer.send({
+      topic: ACCOUNTING_KAFKA_TOPIC,
+      messages: [
+        {
+          key: validatedMessage.messageId,
+          value: JSON.stringify(accountingPayload),
+          headers: {
+            'message-type': validatedMessage.messageType || 'PACS008',
+            'auth-method': validatedMessage.enrichmentData?.authMethod || 'UNKNOWN',
+            'account-system': validatedMessage.enrichmentData?.physicalAcctInfo?.acctSys || 'UNKNOWN',
+            'source': 'orchestrator'
+          }
+        }
+      ]
     });
     
-    console.log(`✅ Accounting service processed message ${messageId} successfully`);
+    console.log(`✅ Accounting message ${messageId} sent to Kafka topic: ${ACCOUNTING_KAFKA_TOPIC}`);
     
     await addOrchestrationStep(messageId, 'accounting_service', 'completed', { 
-      accountingResponse: response.data,
-      httpStatus: response.status,
-      authMethod: validatedMessage.enrichmentData?.authMethod // **NEW: Track auth method in response**
+      kafkaTopic: ACCOUNTING_KAFKA_TOPIC,
+      messageSent: true,
+      authMethod: validatedMessage.enrichmentData?.authMethod
     });
     
     // **NEW: Fire-and-forget limit check for GROUPLIMIT auth method AFTER accounting**
@@ -684,7 +694,8 @@ app.get('/health', (req: Request, res: Response): void => {
       topic: KAFKA_TOPIC,
       groupId: KAFKA_GROUP_ID,
       vamTopic: VAM_KAFKA_TOPIC,
-      limitCheckTopic: LIMITCHECK_KAFKA_TOPIC // **NEW: Include limit check topic in health**
+      limitCheckTopic: LIMITCHECK_KAFKA_TOPIC, // **NEW: Include limit check topic in health**
+      accountingTopic: ACCOUNTING_KAFKA_TOPIC // **NEW: Include accounting topic in health**
     },
     requestId: req.headers['x-request-id']
   };

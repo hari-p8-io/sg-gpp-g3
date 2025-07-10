@@ -1,9 +1,13 @@
 const express = require('express');
 const { v4: uuidv4 } = require('uuid');
+const { Kafka } = require('kafkajs');
 
 // Configuration
 const PORT = process.env.PORT || 8002;
 const SERVICE_NAME = 'fast-accounting-service';
+const KAFKA_BROKERS = (process.env.KAFKA_BROKERS || 'localhost:9092').split(',');
+const KAFKA_GROUP_ID = process.env.KAFKA_GROUP_ID || 'fast-accounting-group';
+const ACCOUNTING_KAFKA_TOPIC = process.env.ACCOUNTING_KAFKA_TOPIC || 'accounting-messages';
 
 // Colors for console output
 const colors = {
@@ -20,8 +24,11 @@ class AccountingService {
     constructor() {
         this.app = express();
         this.processedTransactions = [];
+        this.kafka = null;
+        this.consumer = null;
         this.setupMiddleware();
         this.setupRoutes();
+        this.initializeKafka();
     }
 
     setupMiddleware() {
@@ -114,6 +121,51 @@ class AccountingService {
                 timestamp: new Date().toISOString()
             });
         });
+    }
+
+    async initializeKafka() {
+        try {
+            // Initialize Kafka client
+            this.kafka = new Kafka({
+                clientId: SERVICE_NAME,
+                brokers: KAFKA_BROKERS,
+                retry: {
+                    retries: 3,
+                    initialRetryTime: 1000
+                }
+            });
+
+            // Create consumer
+            this.consumer = this.kafka.consumer({ groupId: KAFKA_GROUP_ID });
+
+            // Connect and subscribe to topics
+            await this.consumer.connect();
+            await this.consumer.subscribe({ topic: ACCOUNTING_KAFKA_TOPIC, fromBeginning: false });
+
+            // Start consuming messages
+            await this.consumer.run({
+                eachMessage: async ({ topic, partition, message }) => {
+                    try {
+                        const messageValue = message.value?.toString();
+                        if (!messageValue) return;
+
+                        const accountingMessage = JSON.parse(messageValue);
+                        console.log(`${colors.blue}📥 Received accounting message from Kafka: ${accountingMessage.messageId}${colors.reset}`);
+                        
+                        // Process the accounting message
+                        await this.processTransaction(accountingMessage);
+                        
+                    } catch (error) {
+                        console.error(`${colors.red}❌ Error processing Kafka message:${colors.reset}`, error);
+                    }
+                }
+            });
+
+            console.log(`${colors.green}✅ Kafka consumer initialized for topic: ${ACCOUNTING_KAFKA_TOPIC}${colors.reset}`);
+            
+        } catch (error) {
+            console.error(`${colors.red}❌ Failed to initialize Kafka:${colors.reset}`, error);
+        }
     }
 
     async processTransaction(transactionData) {

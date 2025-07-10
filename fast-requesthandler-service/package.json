@@ -25,7 +25,8 @@
     "xml2js": "^0.6.0",
     "libxmljs2": "^0.32.0",
     "uuid": "^9.0.0",
-    "dotenv": "^16.3.1"
+    "dotenv": "^16.3.1",
+    "@gpp/pw-core": "^1.0.0"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",

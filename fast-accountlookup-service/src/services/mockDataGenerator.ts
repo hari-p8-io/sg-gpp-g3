@@ -12,9 +12,9 @@ export class MockDataGenerator {
     const normalizedAcctId = AccountUtils.normalizeAccountId(cdtrAcctId);
     const accountType = AccountUtils.determineAccountType(cdtrAcctId);
     const accountCategory = AccountUtils.determineAccountCategory(cdtrAcctId);
-    const accountSystem = AccountUtils.getAccountSystem(accountType, cdtrAcctId); // Pass accountId for VAM routing
+    const accountSystem = AccountUtils.getAccountSystem(cdtrAcctId); // Pass accountId for VAM routing
     const accountGroup = AccountUtils.getAccountGroup(accountCategory);
-    const branchId = AccountUtils.generateBranchId(cdtrAcctId);
+    const branchId = AccountUtils.generateBranchId();
     
     const physicalAcctInfo: any = {
       acctId: cdtrAcctId,
@@ -81,9 +81,9 @@ export class MockDataGenerator {
     const normalizedAcctId = AccountUtils.normalizeAccountId(cdtrAcctId);
     const accountType = AccountUtils.determineAccountType(cdtrAcctId);
     const accountCategory = AccountUtils.determineAccountCategory(cdtrAcctId);
-    const accountSystem = AccountUtils.getAccountSystem(accountType, cdtrAcctId); // Pass accountId for VAM routing
+    const accountSystem = AccountUtils.getAccountSystem(cdtrAcctId); // Pass accountId for VAM routing
     const accountGroup = AccountUtils.getAccountGroup(accountCategory);
-    const branchId = AccountUtils.generateBranchId(cdtrAcctId);
+    const branchId = AccountUtils.generateBranchId();
     
     const physicalAcctInfo: any = {
       acctId: cdtrAcctId,

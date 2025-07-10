@@ -158,8 +158,8 @@ run_tests() {
     # Give services a moment to settle
     sleep 3
     
-    # Run the test script
-    node test-orchestration.js
+    # Run the test script from the utilities directory
+    node utilities/test-orchestration.js
     
     echo -e "${CYAN}📊 Test execution completed${NC}"
 }

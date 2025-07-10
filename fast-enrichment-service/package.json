@@ -7,8 +7,10 @@
     "build": "tsc",
     "start": "node dist/index.js",
     "dev": "ts-node src/index.ts",
-    "test": "npx playwright test",
-    "test:ui": "npx playwright test --ui",
+    "dev:test": "NODE_ENV=test ts-node src/index.ts",
+    "test": "NODE_ENV=test npx playwright test",
+    "test:ui": "NODE_ENV=test npx playwright test --ui",
+    "test:e2e": "NODE_ENV=test npx playwright test",
     "lint": "eslint src/**/*.ts",
     "lint:fix": "eslint src/**/*.ts --fix",
     "clean": "rm -rf dist"
@@ -19,7 +21,8 @@
     "xml2js": "^0.6.0",
     "libxmljs2": "^0.32.0",
     "uuid": "^9.0.0",
-    "dotenv": "^16.3.1"
+    "dotenv": "^16.3.1",
+    "@gpp/pw-core": "^1.0.0"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",

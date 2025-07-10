@@ -3,8 +3,8 @@ syntax = "proto3";
 package gpp.g3.enrichment;
 
 service EnrichmentService {
-  // Enrich a PACS message with additional data
-  rpc EnrichPacsMessage(EnrichmentRequest) returns (EnrichmentResponse);
+  // Enrich a financial message with additional data
+  rpc EnrichMessage(EnrichmentRequest) returns (EnrichmentResponse);
   
   // Health check for the enrichment service
   rpc HealthCheck(HealthCheckRequest) returns (HealthCheckResponse);

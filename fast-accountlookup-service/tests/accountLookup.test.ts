@@ -174,7 +174,7 @@ test.describe('Account Lookup Service - End-to-End Tests', () => {
     expect(resp.enrichment_data.physical_acct_info.acct_attributes.acct_type).toBe('Corporate');
     expect(resp.enrichment_data.physical_acct_info.acct_attributes.acct_category).toBe('CORPORATE');
     expect(resp.enrichment_data.physical_acct_info.acct_attributes.acct_purpose).toBe('BUSINESS_OPERATIONS');
-    expect(resp.enrichment_data.physical_acct_info.acct_sys).toBe('MEPS'); // Corporate accounts use MEPS
+    expect(resp.enrichment_data.physical_acct_info.acct_sys).toBe('MDZ'); // Corporate accounts use MDZ (not MEPS)
   });
 
   test('should handle account not found scenario', async () => {
@@ -430,7 +430,7 @@ test.describe('Account Lookup Service - Singapore Banking Compliance', () => {
     expect(physicalInfo.country).toBe('SG');
     expect(physicalInfo.currency_code).toBe('SGD');
     expect(physicalInfo.bicfi).toMatch(/SG/); // Should contain SG for Singapore
-    expect(['MDZ', 'MEPS', 'FAST']).toContain(physicalInfo.acct_sys); // Valid SG systems
+    expect(['MDZ', 'VAM']).toContain(physicalInfo.acct_sys); // Valid SG systems (only MDZ and VAM)
     expect(['SGB', 'RETAIL', 'CORPORATE']).toContain(physicalInfo.acct_group); // Valid SG groups
     
     // Verify date formats (DD/MM/YYYY)

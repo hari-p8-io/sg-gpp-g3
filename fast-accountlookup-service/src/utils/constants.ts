@@ -42,6 +42,10 @@ export function getMarketConstants(market: string = 'SG') {
 // Backward compatibility - default to Singapore
 export const SINGAPORE_BANKING_CONSTANTS = MARKET_BANKING_CONSTANTS.SG;
 
+// Export individual constants for backward compatibility
+export const SINGAPORE_BANK_CODES = Object.values(SINGAPORE_BANKING_CONSTANTS.BANK_CODES);
+export const SINGAPORE_BRANCH_CODES = Object.values(SINGAPORE_BANKING_CONSTANTS.BRANCH_CODES);
+
 export const ERROR_CODES = {
   INVALID_INPUT: "LOOKUP_INVALID_INPUT_001",
   ACCOUNT_NOT_FOUND: "LOOKUP_ACCOUNT_NOT_FOUND_002",

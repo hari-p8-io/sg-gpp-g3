@@ -120,7 +120,8 @@ export class ValidationClient {
       normalized_acct_id: enrichmentData.normalizedAcctId,
       matched_acct_id: enrichmentData.matchedAcctId,
       partial_match: enrichmentData.partialMatch,
-      is_physical: enrichmentData.isPhysical
+      is_physical: enrichmentData.isPhysical,
+      auth_method: enrichmentData.authMethod
     };
 
     if (enrichmentData.physicalAcctInfo) {

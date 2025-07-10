@@ -80,6 +80,7 @@ message EnrichmentData {
   string partial_match = 6;
   string is_physical = 7;
   PhysicalAcctInfo physical_acct_info = 8;
+  string auth_method = 9;              // Authentication method (AFPONLY, AFPTHENLIMIT, GROUPLIMIT)
 }
 
 // Physical account information

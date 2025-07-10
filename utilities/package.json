@@ -1,0 +1,28 @@
+{
+  "name": "gpp-g3-utilities",
+  "version": "1.0.0",
+  "description": "Utility scripts for GPP G3 platform testing and monitoring",
+  "main": "end-to-end-test-with-kafka-monitoring.js",
+  "scripts": {
+    "e2e-test": "node end-to-end-test-with-kafka-monitoring.js",
+    "e2e-test-verbose": "DEBUG=* node end-to-end-test-with-kafka-monitoring.js",
+    "install-deps": "npm install",
+    "kafka-monitor": "node kafka-topic-monitor.js"
+  },
+  "keywords": ["gpp", "g3", "testing", "kafka", "monitoring", "e2e"],
+  "author": "GPP G3 Team",
+  "license": "MIT",
+  "dependencies": {
+    "@grpc/grpc-js": "^1.9.0",
+    "@grpc/proto-loader": "^0.7.0",
+    "kafkajs": "^2.2.4",
+    "axios": "^1.5.0",
+    "chalk": "^4.1.2"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  }
+} 

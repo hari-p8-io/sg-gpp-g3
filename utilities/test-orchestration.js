@@ -122,7 +122,7 @@ class OrchestrationTester {
     async testVAMFlow() {
         console.log(`${colors.magenta}🏦 Testing VAM Flow...${colors.reset}`);
         
-        const testMessage = createTestMessage('999888777', '5000.00');
+        const testMessage = createTestMessage('999888777666', '5000.00'); // Use the GROUPLIMIT VAM account
         
         try {
             // Send message to orchestrator
@@ -140,6 +140,9 @@ class OrchestrationTester {
             // Check if accounting was called
             const accountingTransactions = await this.getAccountingTransactions();
             
+            // Check if limit check messages were created for GROUPLIMIT VAM accounts
+            const limitCheckMessages = await this.getLimitCheckMessages();
+            
             const result = {
                 testName: 'VAM Flow',
                 messageId: testMessage.messageId,
@@ -147,6 +150,7 @@ class OrchestrationTester {
                 orchestrationStatus: orchestrationStatus?.status || 'unknown',
                 vamProcessed: vamMessages.some(m => m.originalMessage?.messageId === testMessage.messageId),
                 accountingProcessed: accountingTransactions.some(t => t.messageId === testMessage.messageId),
+                limitCheckTriggered: limitCheckMessages.some(m => m.messageId === testMessage.messageId || m.originalMessageId === testMessage.messageId),
                 success: orchestrationStatus?.status === 'completed'
             };
             
@@ -346,12 +350,60 @@ class OrchestrationTester {
         }
     }
 
+    async getLimitCheckMessages() {
+        try {
+            // Create a consumer to check limitcheck-messages topic
+            const consumer = this.kafka.consumer({ groupId: 'orchestration-tester-limitcheck' });
+            await consumer.connect();
+            
+            await consumer.subscribe({ topic: 'limitcheck-messages', fromBeginning: true });
+            
+            const messages = [];
+            
+            await consumer.run({
+                eachMessage: async ({ topic, partition, message }) => {
+                    try {
+                        const messageValue = JSON.parse(message.value.toString());
+                        messages.push({
+                            messageId: messageValue.messageId,
+                            originalMessageId: messageValue.originalMessageId,
+                            account: messageValue.account,
+                            authMethod: messageValue.authMethod,
+                            timestamp: messageValue.timestamp
+                        });
+                    } catch (error) {
+                        console.warn(`${colors.yellow}⚠️ Could not parse limit check message${colors.reset}`);
+                    }
+                }
+            });
+            
+            // Give it a moment to collect messages
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+            await consumer.disconnect();
+            return messages;
+        } catch (error) {
+            console.warn(`${colors.yellow}⚠️ Could not get limit check messages: ${error.message}${colors.reset}`);
+            return [];
+        }
+    }
+
     printTestResult(result) {
         const status = result.success ? `${colors.green}✅ PASSED${colors.reset}` : `${colors.red}❌ FAILED${colors.reset}`;
         console.log(`   ${status} ${result.testName}`);
         if (result.error) {
             console.log(`   Error: ${result.error}`);
         }
+        
+        // Show additional details for VAM flow test
+        if (result.testName === 'VAM Flow' && result.account) {
+            console.log(`   📊 Account: ${result.account}`);
+            console.log(`   🔄 Orchestration Status: ${result.orchestrationStatus}`);
+            console.log(`   🏦 VAM Processed: ${result.vamProcessed ? '✅' : '❌'}`);
+            console.log(`   💰 Accounting Processed: ${result.accountingProcessed ? '✅' : '❌'}`);
+            console.log(`   🔒 Limit Check Triggered: ${result.limitCheckTriggered ? '✅' : '❌'}`);
+        }
+        
         console.log();
     }
 

@@ -36,6 +36,9 @@ const TEST_XML_PAYLOAD = `<?xml version="1.0" encoding="UTF-8"?>
 let enrichmentClient: any;
 
 test.beforeAll(async () => {
+  // Enable mock mode for enrichment service to bypass external dependencies
+  process.env.USE_MOCK_MODE = 'true';
+  
   // Load proto definition
   const protoPath = path.join(__dirname, '../proto/enrichment_service.proto');
   const packageDefinition = protoLoader.loadSync(protoPath, {

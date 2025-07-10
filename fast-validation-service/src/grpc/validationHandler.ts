@@ -111,7 +111,8 @@ export class ValidationHandler {
       normalizedAcctId: grpcData.normalized_acct_id,
       matchedAcctId: grpcData.matched_acct_id,
       partialMatch: grpcData.partial_match,
-      isPhysical: grpcData.is_physical
+      isPhysical: grpcData.is_physical,
+      authMethod: grpcData.auth_method // Add the auth method field
     };
 
     if (grpcData.physical_acct_info) {

@@ -41,6 +41,16 @@ export class ReferenceDataClient {
   private initializeClient(): void {
     try {
       const protoPath = path.join(__dirname, '../../../proto/referencedata_client.proto');
+      
+      // Check if proto file exists
+      if (!require('fs').existsSync(protoPath)) {
+        logger.warn('Reference data proto file not found, client will be disabled', {
+          protoPath
+        });
+        this.isConnected = false;
+        return;
+      }
+      
       const packageDefinition = protoLoader.loadSync(protoPath, {
         keepCase: true,
         longs: String,
@@ -51,6 +61,17 @@ export class ReferenceDataClient {
 
       const proto = grpc.loadPackageDefinition(packageDefinition) as any;
       const referenceDataServiceUrl = process.env['REFERENCE_DATA_SERVICE_URL'] || 'localhost:50060';
+      
+      // Check if the proto has the expected structure
+      if (!proto.gpp || !proto.gpp.g3 || !proto.gpp.g3.referencedata) {
+        logger.warn('Reference data proto file has incorrect structure, client will be disabled', {
+          protoPath,
+          availablePackages: Object.keys(proto),
+          protoStructure: proto.gpp ? Object.keys(proto.gpp) : 'No gpp package found'
+        });
+        this.isConnected = false;
+        return;
+      }
       
       this.client = new proto.gpp.g3.referencedata.ReferenceDataService(
         referenceDataServiceUrl,
