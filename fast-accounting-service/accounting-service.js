@@ -8,6 +8,7 @@ const SERVICE_NAME = 'fast-accounting-service';
 const KAFKA_BROKERS = (process.env.KAFKA_BROKERS || 'localhost:9092').split(',');
 const KAFKA_GROUP_ID = process.env.KAFKA_GROUP_ID || 'fast-accounting-group';
 const ACCOUNTING_KAFKA_TOPIC = process.env.ACCOUNTING_KAFKA_TOPIC || 'accounting-messages';
+const COMPLETION_KAFKA_TOPIC = process.env.COMPLETION_KAFKA_TOPIC || 'accounting-completion-messages';
 
 // Colors for console output
 const colors = {
@@ -26,6 +27,7 @@ class AccountingService {
         this.processedTransactions = [];
         this.kafka = null;
         this.consumer = null;
+        this.producer = null;
         this.setupMiddleware();
         this.setupRoutes();
         this.initializeKafka();
@@ -71,56 +73,6 @@ class AccountingService {
             });
         });
 
-        // Main accounting processing endpoint
-        this.app.post('/api/v1/accounting/process', async (req, res) => {
-            try {
-                const transaction = await this.processTransaction(req.body);
-                res.json(transaction);
-            } catch (error) {
-                console.error(`${colors.red}❌ Error processing transaction: ${error.message}${colors.reset}`);
-                res.status(500).json({
-                    error: 'Transaction processing failed',
-                    message: error.message,
-                    timestamp: new Date().toISOString()
-                });
-            }
-        });
-
-        // Get processed transactions
-        this.app.get('/api/v1/accounting/transactions', (req, res) => {
-            res.json({
-                transactions: this.processedTransactions,
-                count: this.processedTransactions.length,
-                timestamp: new Date().toISOString()
-            });
-        });
-
-        // Get specific transaction
-        this.app.get('/api/v1/accounting/transactions/:transactionId', (req, res) => {
-            const { transactionId } = req.params;
-            const transaction = this.processedTransactions.find(t => 
-                t.transactionId === transactionId || t.messageId === transactionId
-            );
-            
-            if (!transaction) {
-                return res.status(404).json({
-                    error: 'Transaction not found',
-                    transactionId,
-                    timestamp: new Date().toISOString()
-                });
-            }
-            
-            res.json(transaction);
-        });
-
-        // Clear processed transactions (for testing)
-        this.app.delete('/api/v1/accounting/transactions', (req, res) => {
-            this.processedTransactions = [];
-            res.json({
-                message: 'All transactions cleared',
-                timestamp: new Date().toISOString()
-            });
-        });
     }
 
     async initializeKafka() {
@@ -135,8 +87,20 @@ class AccountingService {
                 }
             });
 
-            // Create consumer
+            // Create consumer for incoming accounting messages
             this.consumer = this.kafka.consumer({ groupId: KAFKA_GROUP_ID });
+            
+            // Create producer for completion messages
+            this.producer = this.kafka.producer({
+                retry: {
+                    retries: 3,
+                    initialRetryTime: 1000
+                }
+            });
+
+            // Connect producer
+            await this.producer.connect();
+            console.log(`${colors.green}📤 Kafka producer connected for completion messages${colors.reset}`);
 
             // Connect and subscribe to topics
             await this.consumer.connect();
@@ -171,7 +135,7 @@ class AccountingService {
     async processTransaction(transactionData) {
         const processingStartTime = Date.now();
         
-        console.log(`${colors.green}💰 Processing accounting transaction:${colors.reset}`);
+        console.log(`${colors.magenta}💰 Processing accounting transaction:${colors.reset}`);
         console.log(`   Message ID: ${transactionData.messageId}`);
         console.log(`   PUID: ${transactionData.puid}`);
         console.log(`   Amount: ${transactionData.amount} ${transactionData.currency}`);
@@ -216,7 +180,7 @@ class AccountingService {
 
         // Keep only last 100 transactions
         if (this.processedTransactions.length > 100) {
-            this.processedTransactions = this.processedTransactions.slice(-100);
+            this.processedTransactions.shift();
         }
 
         console.log(`${colors.green}✅ Accounting transaction processed successfully${colors.reset}`);
@@ -224,7 +188,65 @@ class AccountingService {
         console.log(`   Processing Time: ${processingTime}ms`);
         console.log(`   Total Transactions: ${this.processedTransactions.length}`);
 
+        // Send completion message to requesthandler
+        await this.sendCompletionMessage(accountingTransaction, transactionData);
+
         return accountingTransaction;
+    }
+
+    async sendCompletionMessage(accountingTransaction, originalTransactionData) {
+        try {
+            const completionMessage = {
+                messageId: accountingTransaction.messageId,
+                puid: accountingTransaction.puid,
+                transactionId: accountingTransaction.transactionId,
+                messageType: accountingTransaction.messageType,
+                status: 'COMPLETED',
+                completedAt: new Date().toISOString(),
+                processingTimeMs: accountingTransaction.processing.processingTimeMs,
+                amount: accountingTransaction.amount,
+                currency: accountingTransaction.currency,
+                debtorAccount: accountingTransaction.debtorAccount,
+                creditorAccount: accountingTransaction.creditorAccount,
+                originalMessageData: {
+                    originalMessageId: originalTransactionData.originalMessageId,
+                    originalCreationTime: originalTransactionData.originalCreationTime,
+                    originalXmlPayload: originalTransactionData.originalXmlPayload
+                },
+                enrichmentData: accountingTransaction.metadata.enrichmentData,
+                accountingResult: {
+                    transactionId: accountingTransaction.transactionId,
+                    accountingEntries: accountingTransaction.accountingEntries,
+                    validations: accountingTransaction.processing.validations
+                },
+                responseRequired: true,
+                responseType: 'PACS.002'
+            };
+
+            const message = {
+                key: accountingTransaction.puid,
+                value: JSON.stringify(completionMessage),
+                headers: {
+                    'messageId': accountingTransaction.messageId,
+                    'puid': accountingTransaction.puid,
+                    'messageType': accountingTransaction.messageType,
+                    'timestamp': new Date().toISOString(),
+                    'source': SERVICE_NAME
+                }
+            };
+
+            await this.producer.send({
+                topic: COMPLETION_KAFKA_TOPIC,
+                messages: [message]
+            });
+
+            console.log(`${colors.cyan}📤 Completion message sent to requesthandler: ${accountingTransaction.puid}${colors.reset}`);
+            console.log(`   Topic: ${COMPLETION_KAFKA_TOPIC}`);
+            console.log(`   Response Type: PACS.002`);
+            
+        } catch (error) {
+            console.error(`${colors.red}❌ Failed to send completion message:${colors.reset}`, error);
+        }
     }
 
     async simulateAccountingProcessing(transactionData) {
@@ -286,10 +308,26 @@ class AccountingService {
                     console.log(`${colors.blue}📊 Health check: http://localhost:${PORT}/health${colors.reset}`);
                     console.log(`${colors.blue}📊 Actuator health: http://localhost:${PORT}/actuator/health${colors.reset}`);
                     console.log(`${colors.blue}💰 Process endpoint: http://localhost:${PORT}/api/v1/accounting/process${colors.reset}`);
+                    console.log(`${colors.cyan}📤 Completion messages topic: ${COMPLETION_KAFKA_TOPIC}${colors.reset}`);
                     resolve();
                 }
             });
         });
+    }
+
+    async shutdown() {
+        try {
+            if (this.producer) {
+                await this.producer.disconnect();
+                console.log(`${colors.yellow}📤 Kafka producer disconnected${colors.reset}`);
+            }
+            if (this.consumer) {
+                await this.consumer.disconnect();
+                console.log(`${colors.yellow}📥 Kafka consumer disconnected${colors.reset}`);
+            }
+        } catch (error) {
+            console.error(`${colors.red}❌ Error during shutdown:${colors.reset}`, error);
+        }
     }
 }
 
@@ -297,13 +335,15 @@ class AccountingService {
 const accountingService = new AccountingService();
 
 // Handle graceful shutdown
-process.on('SIGINT', () => {
+process.on('SIGINT', async () => {
     console.log(`${colors.yellow}🔄 Received SIGINT, shutting down gracefully...${colors.reset}`);
+    await accountingService.shutdown();
     process.exit(0);
 });
 
-process.on('SIGTERM', () => {
+process.on('SIGTERM', async () => {
     console.log(`${colors.yellow}🔄 Received SIGTERM, shutting down gracefully...${colors.reset}`);
+    await accountingService.shutdown();
     process.exit(0);
 });
 
