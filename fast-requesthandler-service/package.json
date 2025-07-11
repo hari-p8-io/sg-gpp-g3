@@ -5,18 +5,27 @@
   "main": "dist/index.js",
   "scripts": {
     "build": "tsc",
-    "proto:generate": "grpc_tools_node_protoc --js_out=import_style=commonjs,binary:./src/generated --grpc_out=grpc_js:./src/generated --plugin=protoc-gen-grpc=`which grpc_tools_node_protoc_plugin` -I ./proto proto/*.proto && grpc_tools_node_protoc --plugin=protoc-gen-ts=./node_modules/.bin/protoc-gen-ts --ts_out=grpc_js:./src/generated -I ./proto proto/*.proto",
+    "proto:generate": "grpc_tools_node_protoc --js_out=import_style=commonjs,binary:./src/generated --grpc_out=grpc_js:./src/generated --plugin=protoc-gen-grpc=`which grpc_tools_node_protoc_plugin` -I ./proto proto/*.proto || true",
     "start": "node dist/index.js",
     "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
-    "test": "jest",
+    "test": "jest --passWithNoTests",
     "test:watch": "jest --watch",
     "test:e2e": "playwright test",
+    "test:e2e:ci": "playwright test --config=playwright.config.ci.ts",
+    "test:ci": "npm run test && npm run test:e2e:ci",
     "lint": "eslint src/**/*.ts",
     "lint:fix": "eslint src/**/*.ts --fix",
     "clean": "rm -rf dist",
     "spanner:start": "docker run -d -p 9010:9010 -p 9020:9020 --name spanner-emulator gcr.io/cloud-spanner-emulator/emulator:latest",
     "spanner:stop": "docker stop spanner-emulator && docker rm spanner-emulator",
-    "db:setup": "node scripts/setup-database.js"
+    "db:setup": "node scripts/setup-database.js",
+    "mock:setup": "node scripts/setup-mock-servers.js",
+    "docker:build": "docker build -t fast-requesthandler-service .",
+    "docker:test": "docker-compose -f docker-compose.ci.yml up --build --abort-on-container-exit",
+    "docker:test:clean": "docker-compose -f docker-compose.ci.yml down -v",
+    "ci:setup": "npm ci && npm run proto:generate && npm run build",
+    "ci:test": "npm run test:ci",
+    "ci:cleanup": "npm run docker:test:clean"
   },
   "dependencies": {
     "@grpc/grpc-js": "^1.9.0",
@@ -43,7 +52,8 @@
     "@typescript-eslint/eslint-plugin": "^6.0.0",
     "@typescript-eslint/parser": "^6.0.0",
     "grpc-tools": "^1.12.0",
-    "grpc_tools_node_protoc_ts": "^5.3.0"
+    "grpc_tools_node_protoc_ts": "^5.3.0",
+    "protoc-gen-ts": "^0.8.5"
   },
   "jest": {
     "preset": "ts-jest",

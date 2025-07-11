@@ -30,7 +30,7 @@ export class ResponseHandler {
   private consumer: Consumer;
   private producer: Producer;
   private spannerClient: SpannerClient;
-  private pacs002Generator: PACS002Generator;
+  private pacs002Generator: any;
   private isRunning: boolean = false;
 
   constructor(

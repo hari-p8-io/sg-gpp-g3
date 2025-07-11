@@ -1,0 +1,167 @@
+version: '3.8'
+
+services:
+  # Cloud Spanner Emulator
+  spanner-emulator:
+    image: gcr.io/cloud-spanner-emulator/emulator:latest
+    ports:
+      - "9010:9010"
+      - "9020:9020"
+    environment:
+      - SPANNER_EMULATOR_HOST=0.0.0.0:9010
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9020"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - test-network
+
+  # Zookeeper for Kafka
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.4.0
+    ports:
+      - "2181:2181"
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "2181"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - test-network
+
+  # Kafka
+  kafka:
+    image: confluentinc/cp-kafka:7.4.0
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
+    depends_on:
+      zookeeper:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "kafka-topics", "--bootstrap-server", "localhost:9092", "--list"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - test-network
+
+  # Fast Request Handler Service
+  fast-requesthandler-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3001:3001"
+      - "50051:50051"
+    environment:
+      - NODE_ENV=test
+      - PORT=3001
+      - GRPC_PORT=50051
+      - SPANNER_EMULATOR_HOST=spanner-emulator:9010
+      - SPANNER_PROJECT_ID=test-project
+      - SPANNER_INSTANCE_ID=test-instance
+      - SPANNER_DATABASE_ID=test-database
+      - KAFKA_BROKERS=kafka:9092
+      - LOG_LEVEL=info
+    depends_on:
+      spanner-emulator:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - test-network
+
+  # Mock services for testing enrichment dependencies
+  mock-accountlookup:
+    image: mockserver/mockserver:latest
+    ports:
+      - "8080:1080"
+    environment:
+      - MOCKSERVER_PORT=1080
+      - MOCKSERVER_LOG_LEVEL=INFO
+    command: -serverPort 1080
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:1080/mockserver/status"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - test-network
+
+  mock-referencedata:
+    image: mockserver/mockserver:latest
+    ports:
+      - "8081:1080"
+    environment:
+      - MOCKSERVER_PORT=1080
+      - MOCKSERVER_LOG_LEVEL=INFO
+    command: -serverPort 1080
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:1080/mockserver/status"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - test-network
+
+  # Test runner service
+  test-runner:
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+    environment:
+      - NODE_ENV=test
+      - SERVICE_URL=http://fast-requesthandler-service:3001
+      - GRPC_URL=fast-requesthandler-service:50051
+      - SPANNER_EMULATOR_HOST=spanner-emulator:9010
+      - SPANNER_PROJECT_ID=test-project
+      - SPANNER_INSTANCE_ID=test-instance
+      - SPANNER_DATABASE_ID=test-database
+      - KAFKA_BROKERS=kafka:9092
+      - MOCK_ACCOUNTLOOKUP_URL=http://mock-accountlookup:1080
+      - MOCK_REFERENCEDATA_URL=http://mock-referencedata:1080
+    depends_on:
+      fast-requesthandler-service:
+        condition: service_healthy
+      mock-accountlookup:
+        condition: service_healthy
+      mock-referencedata:
+        condition: service_healthy
+    volumes:
+      - ./test-results:/app/test-results
+      - ./playwright-report:/app/playwright-report
+    networks:
+      - test-network
+    profiles:
+      - test
+
+networks:
+  test-network:
+    driver: bridge
+
+volumes:
+  test-results:
+  playwright-report: 

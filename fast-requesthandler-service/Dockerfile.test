@@ -1,0 +1,75 @@
+FROM mcr.microsoft.com/playwright:v1.40.0-focal
+
+WORKDIR /app
+
+# Install Node.js 18 (if not already available)
+RUN curl -fsSL https://deb.nodesource.com/setup_18.x | bash - && \
+    apt-get install -y nodejs
+
+# Copy package files
+COPY package*.json ./
+
+# Install dependencies
+RUN npm ci
+
+# Copy source code
+COPY . .
+
+# Generate protocol buffers
+RUN npm run proto:generate
+
+# Build the application
+RUN npm run build
+
+# Create directories for test results
+RUN mkdir -p test-results playwright-report
+
+# Install playwright browsers (already in base image but ensuring latest)
+RUN npx playwright install --with-deps
+
+# Add wait script for service readiness
+COPY <<EOF /app/wait-for-services.sh
+#!/bin/bash
+set -e
+
+echo "Waiting for services to be ready..."
+
+# Wait for fast-requesthandler-service
+echo "Waiting for fast-requesthandler-service..."
+until curl -f http://fast-requesthandler-service:3001/health; do
+  echo "fast-requesthandler-service not ready yet, waiting..."
+  sleep 5
+done
+echo "fast-requesthandler-service is ready!"
+
+# Wait for mock services
+echo "Waiting for mock-accountlookup..."
+until curl -f http://mock-accountlookup:1080/mockserver/status; do
+  echo "mock-accountlookup not ready yet, waiting..."
+  sleep 5
+done
+echo "mock-accountlookup is ready!"
+
+echo "Waiting for mock-referencedata..."
+until curl -f http://mock-referencedata:1080/mockserver/status; do
+  echo "mock-referencedata not ready yet, waiting..."
+  sleep 5
+done
+echo "mock-referencedata is ready!"
+
+echo "All services are ready!"
+EOF
+
+RUN chmod +x /app/wait-for-services.sh
+
+# Set environment variables
+ENV NODE_ENV=test
+ENV CI=true
+ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+  CMD curl -f http://localhost:3001/health || exit 1
+
+# Default command to run tests
+CMD ["sh", "-c", "./wait-for-services.sh && npm run test:e2e"] 
