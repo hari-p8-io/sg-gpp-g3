@@ -4,6 +4,13 @@ This document describes the CI/CD pipeline setup for the Fast Request Handler Se
 
 ## Overview
 
+Each service has its own independent CI/CD pipeline located in its service directory under `.github/workflows/`. This provides:
+
+- **Service Isolation**: Each service has its own build and deployment pipeline
+- **Independent Testing**: Services can be tested and deployed independently  
+- **Optimized Triggers**: Only runs when the specific service changes
+- **Clear Ownership**: Each team owns their service's pipeline
+
 The CI/CD pipeline automatically builds, tests, and deploys the Fast Request Handler Service. It includes:
 
 - **Automated Testing**: Unit tests and end-to-end tests using Playwright
@@ -83,11 +90,32 @@ Mock servers are automatically configured with realistic test data:
 - `POST /validate/bic`: Validates BIC codes
 - `GET /health`: Health check endpoint
 
+## Service Structure
+
+```
+fast-requesthandler-service/
+├── .github/
+│   └── workflows/
+│       └── fast-requesthandler-service.yml    # CI/CD Pipeline
+├── src/                                       # Service source code
+├── tests/                                     # Test files
+├── docker-compose.ci.yml                     # CI infrastructure setup
+├── Dockerfile                                 # Production container
+├── Dockerfile.test                           # Test container
+├── playwright.config.ci.ts                   # CI test configuration
+├── config/
+│   └── ci.json                               # CI configuration
+├── scripts/
+│   └── setup-mock-servers.js                # Mock service setup
+└── README.ci.md                              # CI/CD documentation
+```
+
 ## Configuration Files
 
 ### GitHub Actions Workflow
-- **File**: `.github/workflows/fast-requesthandler-service.yml`
-- **Triggers**: Push/PR to main/develop branches
+- **File**: `.github/workflows/fast-requesthandler-service.yml` (in service directory)
+- **Location**: Each service has its own .github/workflows directory
+- **Triggers**: Push/PR to main/develop branches with changes to service files
 - **Environment Variables**: Configured per job
 
 ### Docker Compose (CI)
