@@ -1,5 +1,5 @@
 import { v4 as uuidv4 } from 'uuid';
-import { XMLParser } from '../utils/xmlParser';
+import { extractCdtrAcct, validateXML, isFinancialMessage } from '../utils/xmlParser';
 import { AccountLookupClient, AccountLookupRequest } from '../grpc/clients/accountLookupClient';
 import { ReferenceDataClient } from '../grpc/clients/referenceDataClient';
 import { ValidationClient, ValidationRequest } from '../grpc/clients/validationClient';
@@ -32,11 +32,36 @@ export class EnrichmentService {
   private validationClient: ValidationClient;
   private useMockMode: boolean;
 
-  constructor() {
-    this.accountLookupClient = new AccountLookupClient();
-    this.referenceDataClient = new ReferenceDataClient();
-    this.validationClient = new ValidationClient('localhost:50053');
+  // Private constructor to force use of factory method
+  private constructor(
+    accountLookupClient: AccountLookupClient,
+    referenceDataClient: ReferenceDataClient,
+    validationClient: ValidationClient
+  ) {
+    this.accountLookupClient = accountLookupClient;
+    this.referenceDataClient = referenceDataClient;
+    this.validationClient = validationClient;
     this.useMockMode = process.env.NODE_ENV === 'test' || process.env.USE_MOCK_MODE === 'true';
+  }
+
+  /**
+   * Static async factory method to create and initialize EnrichmentService
+   * @returns Promise<EnrichmentService> - Fully initialized service instance
+   * @throws Error if initialization fails
+   */
+  static async create(): Promise<EnrichmentService> {
+    try {
+      // Initialize async clients first
+      const accountLookupClient = await AccountLookupClient.create();
+      
+      // Initialize sync clients
+      const referenceDataClient = new ReferenceDataClient();
+      const validationClient = new ValidationClient('localhost:50053');
+
+      return new EnrichmentService(accountLookupClient, referenceDataClient, validationClient);
+    } catch (error) {
+      throw new Error(`Failed to initialize EnrichmentService: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
   }
 
   async enrichMessage(request: EnrichmentRequest): Promise<EnrichmentResponse> {
@@ -51,13 +76,13 @@ export class EnrichmentService {
 
     try {
       // Validate input
-      const validationError = this.validateRequest(request);
+      const validationError = await this.validateRequest(request);
       if (validationError) {
         return this.createErrorResponse(request, validationError);
       }
 
       // Extract CdtrAcct from XML payload
-      const cdtrAcct = await XMLParser.extractCdtrAcct(request.xmlPayload);
+      const cdtrAcct = await extractCdtrAcct(request.xmlPayload);
       if (!cdtrAcct) {
         return this.createErrorResponse(request, 'Could not extract CdtrAcct from XML payload');
       }
@@ -257,7 +282,7 @@ export class EnrichmentService {
     }
   }
 
-  private validateRequest(request: EnrichmentRequest): string | null {
+  private async validateRequest(request: EnrichmentRequest): Promise<string | null> {
     if (!request.messageId || request.messageId.trim().length === 0) {
       return 'Message ID is required';
     }
@@ -270,11 +295,12 @@ export class EnrichmentService {
       return 'XML payload is required';
     }
 
-    if (!XMLParser.validateXML(request.xmlPayload)) {
+    const isValidXML = await validateXML(request.xmlPayload);
+    if (!isValidXML) {
       return 'Invalid XML payload format';
     }
 
-    if (!XMLParser.isFinancialMessage(request.xmlPayload)) {
+    if (!isFinancialMessage(request.xmlPayload)) {
       return 'XML payload is not a valid PACS message';
     }
 

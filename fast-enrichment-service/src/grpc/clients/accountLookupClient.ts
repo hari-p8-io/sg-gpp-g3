@@ -28,21 +28,34 @@ export class AccountLookupClient {
   private client: any;
   private connected: boolean = false;
 
-  constructor() {
-    this.initializeClient();
+  // Private constructor to force use of factory method
+  private constructor() {
+    // Constructor now only initializes properties
+  }
+
+  /**
+   * Static async factory method to create and initialize AccountLookupClient
+   * @returns Promise<AccountLookupClient> - Fully initialized client instance
+   * @throws Error if initialization fails
+   */
+  static async create(): Promise<AccountLookupClient> {
+    const client = new AccountLookupClient();
+    await client.initializeClient();
+    return client;
   }
 
   private async initializeClient(): Promise<void> {
     try {
       // Load proto file
-      const PROTO_PATH = path.join(__dirname, '../../proto/accountlookup_client.proto');
+      const PROTO_PATH = path.join(__dirname, '../../../proto/gpp/g3/accountlookup/accountlookup_client.proto');
+      
       const packageDefinition = protoLoader.loadSync(PROTO_PATH, {
         keepCase: true,
         longs: String,
         enums: String,
         defaults: true,
         oneofs: true,
-        includeDirs: [path.join(__dirname, '../../proto')]
+        includeDirs: [path.join(__dirname, '../../../proto')]
       });
 
       const protoDescriptor = grpc.loadPackageDefinition(packageDefinition);
@@ -50,21 +63,22 @@ export class AccountLookupClient {
 
       // Create client
       this.client = new AccountLookupService(
-        config.grpcServices.accountLookupUrl,
+        config.accountLookupServiceUrl,
         grpc.credentials.createInsecure()
       );
 
       this.connected = true;
       logger.info('Account lookup client initialized', {
-        serviceUrl: config.grpcServices.accountLookupUrl
+        serviceUrl: config.accountLookupServiceUrl
       });
 
     } catch (error) {
       logger.error('Failed to initialize account lookup client', {
         error: error instanceof Error ? error.message : 'Unknown error',
-        serviceUrl: config.grpcServices.accountLookupUrl
+        serviceUrl: config.accountLookupServiceUrl
       });
       this.connected = false;
+      throw new Error(`Failed to initialize AccountLookupClient: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 
@@ -128,47 +142,100 @@ export class AccountLookupClient {
   }
 
   private convertEnrichmentData(grpcData: any): any {
+    // Defensive programming: check if grpcData exists
+    if (!grpcData) {
+      return {};
+    }
+
     const enrichmentData: any = {
-      receivedAcctId: grpcData.received_acct_id,
-      lookupStatusCode: grpcData.lookup_status_code,
-      lookupStatusDesc: grpcData.lookup_status_desc,
-      normalizedAcctId: grpcData.normalized_acct_id,
-      matchedAcctId: grpcData.matched_acct_id,
-      partialMatch: grpcData.partial_match,
-      isPhysical: grpcData.is_physical
+      receivedAcctId: grpcData.received_acct_id || '',
+      lookupStatusCode: grpcData.lookup_status_code || 0,
+      lookupStatusDesc: grpcData.lookup_status_desc || '',
+      normalizedAcctId: grpcData.normalized_acct_id || '',
+      matchedAcctId: grpcData.matched_acct_id || '',
+      partialMatch: grpcData.partial_match || '',
+      isPhysical: grpcData.is_physical || ''
     };
 
+    // Safe property access with null/undefined checks
     if (grpcData.physical_acct_info) {
       const physicalInfo = grpcData.physical_acct_info;
       enrichmentData.physicalAcctInfo = {
-        acctId: physicalInfo.acct_id,
-        acctSys: physicalInfo.acct_sys,
-        acctGroup: physicalInfo.acct_group,
-        country: physicalInfo.country,
+        acctId: physicalInfo.acct_id || '',
+        acctSys: physicalInfo.acct_sys || '',
+        acctGroup: physicalInfo.acct_group || '',
+        country: physicalInfo.country || '',
         branchId: physicalInfo.branch_id || undefined,
-        acctAttributes: {
-          acctType: physicalInfo.acct_attributes.acct_type,
-          acctCategory: physicalInfo.acct_attributes.acct_category,
-          acctPurpose: physicalInfo.acct_attributes.acct_purpose
-        },
-        acctOpsAttributes: {
-          isActive: physicalInfo.acct_ops_attributes.is_active,
-          acctStatus: physicalInfo.acct_ops_attributes.acct_status,
-          openDate: physicalInfo.acct_ops_attributes.open_date,
-          expiryDate: physicalInfo.acct_ops_attributes.expiry_date,
-          restraints: {
-            stopAll: physicalInfo.acct_ops_attributes.restraints.stop_all,
-            stopDebits: physicalInfo.acct_ops_attributes.restraints.stop_debits,
-            stopCredits: physicalInfo.acct_ops_attributes.restraints.stop_credits,
-            stopAtm: physicalInfo.acct_ops_attributes.restraints.stop_atm,
-            stopEftPos: physicalInfo.acct_ops_attributes.restraints.stop_eft_pos,
-            stopUnknown: physicalInfo.acct_ops_attributes.restraints.stop_unknown,
-            warnings: physicalInfo.acct_ops_attributes.restraints.warnings
-          }
-        },
-        bicfi: physicalInfo.bicfi,
-        currencyCode: physicalInfo.currency_code
+        bicfi: physicalInfo.bicfi || '',
+        currencyCode: physicalInfo.currency_code || ''
       };
+
+      // Safe access to acct_attributes with null/undefined checks
+      if (physicalInfo.acct_attributes) {
+        enrichmentData.physicalAcctInfo.acctAttributes = {
+          acctType: physicalInfo.acct_attributes.acct_type || '',
+          acctCategory: physicalInfo.acct_attributes.acct_category || '',
+          acctPurpose: physicalInfo.acct_attributes.acct_purpose || ''
+        };
+      } else {
+        // Provide default values when acct_attributes is missing
+        enrichmentData.physicalAcctInfo.acctAttributes = {
+          acctType: '',
+          acctCategory: '',
+          acctPurpose: ''
+        };
+      }
+
+      // Safe access to acct_ops_attributes with null/undefined checks
+      if (physicalInfo.acct_ops_attributes) {
+        enrichmentData.physicalAcctInfo.acctOpsAttributes = {
+          isActive: physicalInfo.acct_ops_attributes.is_active || false,
+          acctStatus: physicalInfo.acct_ops_attributes.acct_status || '',
+          openDate: physicalInfo.acct_ops_attributes.open_date || '',
+          expiryDate: physicalInfo.acct_ops_attributes.expiry_date || ''
+        };
+
+        // Safe access to restraints with null/undefined checks
+        if (physicalInfo.acct_ops_attributes.restraints) {
+          enrichmentData.physicalAcctInfo.acctOpsAttributes.restraints = {
+            stopAll: physicalInfo.acct_ops_attributes.restraints.stop_all || false,
+            stopDebits: physicalInfo.acct_ops_attributes.restraints.stop_debits || false,
+            stopCredits: physicalInfo.acct_ops_attributes.restraints.stop_credits || false,
+            stopAtm: physicalInfo.acct_ops_attributes.restraints.stop_atm || false,
+            stopEftPos: physicalInfo.acct_ops_attributes.restraints.stop_eft_pos || false,
+            stopUnknown: physicalInfo.acct_ops_attributes.restraints.stop_unknown || false,
+            warnings: physicalInfo.acct_ops_attributes.restraints.warnings || []
+          };
+        } else {
+          // Provide default values when restraints is missing
+          enrichmentData.physicalAcctInfo.acctOpsAttributes.restraints = {
+            stopAll: false,
+            stopDebits: false,
+            stopCredits: false,
+            stopAtm: false,
+            stopEftPos: false,
+            stopUnknown: false,
+            warnings: []
+          };
+        }
+      } else {
+        // Provide default values when acct_ops_attributes is missing
+        enrichmentData.physicalAcctInfo.acctOpsAttributes = {
+          isActive: false,
+          acctStatus: '',
+          openDate: '',
+          expiryDate: '',
+          restraints: {
+            stopAll: false,
+            stopDebits: false,
+            stopCredits: false,
+            stopAtm: false,
+            stopEftPos: false,
+            stopUnknown: false,
+            warnings: []
+          }
+        };
+      }
     }
 
     return enrichmentData;

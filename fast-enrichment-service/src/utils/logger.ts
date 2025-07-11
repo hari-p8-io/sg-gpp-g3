@@ -1,43 +1,11 @@
-interface LogData {
-  [key: string]: any;
-}
+// Use shared logger package instead of local implementation
+import { getLogger } from '@gpp/logger';
 
-export class Logger {
-  private serviceName: string;
+// Export the shared logger configured for this service
+export const logger = getLogger('fast-enrichment-service');
 
-  constructor(serviceName: string = 'fast-enrichment-service') {
-    this.serviceName = serviceName;
-  }
+// Re-export types for backward compatibility
+export type { LogData } from '@gpp/logger';
 
-  private formatMessage(level: string, message: string, data?: LogData): string {
-    const timestamp = new Date().toISOString();
-    const logEntry = {
-      timestamp,
-      level,
-      service: this.serviceName,
-      message,
-      ...data
-    };
-    return JSON.stringify(logEntry);
-  }
-
-  info(message: string, data?: LogData): void {
-    console.log(this.formatMessage('info', message, data));
-  }
-
-  error(message: string, data?: LogData): void {
-    console.error(this.formatMessage('error', message, data));
-  }
-
-  warn(message: string, data?: LogData): void {
-    console.warn(this.formatMessage('warn', message, data));
-  }
-
-  debug(message: string, data?: LogData): void {
-    if (process.env['LOG_LEVEL'] === 'debug') {
-      console.debug(this.formatMessage('debug', message, data));
-    }
-  }
-}
-
-export const logger = new Logger(); 
+// Re-export Logger class for backward compatibility
+export { Logger } from '@gpp/logger'; 

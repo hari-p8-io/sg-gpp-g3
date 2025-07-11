@@ -60,22 +60,53 @@ class HttpTestHelper {
     }
   }
 
-  async waitForMessage(messageId: string, timeoutMs: number = 10000): Promise<any> {
+  async waitForMessage(
+    messageId: string, 
+    timeoutMs: number = 10000, 
+    pollingIntervalMs: number = 1000
+  ): Promise<any> {
     const startTime = Date.now();
+    let lastError: Error | null = null;
+    let attemptCount = 0;
+    
+    console.log(`Waiting for message ${messageId} (timeout: ${timeoutMs}ms, polling interval: ${pollingIntervalMs}ms)`);
     
     while (Date.now() - startTime < timeoutMs) {
+      attemptCount++;
+      const elapsedTime = Date.now() - startTime;
+      
       try {
+        console.log(`Attempt ${attemptCount}: Checking orchestration status for message ${messageId} (elapsed: ${elapsedTime}ms)`);
         const response = await this.getOrchestrationStatus(messageId);
+        
         if (response.orchestration) {
+          console.log(`Message ${messageId} found after ${attemptCount} attempts in ${elapsedTime}ms`);
           return response.orchestration;
         }
-      } catch (error) {
-        // Continue waiting
+        
+        console.log(`Attempt ${attemptCount}: Message ${messageId} not yet available, continuing to wait...`);
+        
+      } catch (error: any) {
+        lastError = error instanceof Error ? error : new Error(String(error));
+        console.warn(`Attempt ${attemptCount}: Error checking message ${messageId} status: ${lastError.message} (elapsed: ${elapsedTime}ms)`);
+        
+        // If it's a persistent 404 or connection error, we might want to continue
+        // If it's an authentication or other critical error, we might want to fail fast
+        if (error.response?.status && ![404, 503, 502, 500].includes(error.response.status)) {
+          console.error(`Critical error encountered for message ${messageId}, stopping wait: ${lastError.message}`);
+          throw new Error(`Critical error waiting for message ${messageId}: ${lastError.message}`);
+        }
       }
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Wait for the configured polling interval before next attempt
+      await new Promise(resolve => setTimeout(resolve, pollingIntervalMs));
     }
     
-    throw new Error(`Timeout waiting for message ${messageId}`);
+    const totalElapsed = Date.now() - startTime;
+    const errorContext = lastError ? ` Last error: ${lastError.message}` : '';
+    
+    console.error(`Timeout waiting for message ${messageId} after ${attemptCount} attempts in ${totalElapsed}ms.${errorContext}`);
+    throw new Error(`Timeout waiting for message ${messageId} after ${totalElapsed}ms and ${attemptCount} attempts.${errorContext}`);
   }
 
   // For orchestrator service, we simulate message processing by checking orchestration status

@@ -14,43 +14,35 @@ export interface ServiceConfig {
   maxRetryAttempts: number;
   retryBackoffMs: number;
   useMockAccountLookup: boolean;
+  database: {
+    projectId: string;
+    instanceId: string;
+    databaseId: string;
+  };
 }
 
-export const getConfig = (): ServiceConfig => {
-  return {
-    grpcPort: parseInt(process.env['GRPC_PORT'] || '50052', 10),
-    serviceName: process.env['SERVICE_NAME'] || 'fast-enrichment-service',
-    logLevel: process.env['LOG_LEVEL'] || 'info',
-    environment: process.env['ENVIRONMENT'] || 'development',
-    country: process.env['COUNTRY'] || 'SG',
-    defaultCurrency: process.env['DEFAULT_CURRENCY'] || 'SGD',
-    accountLookupServiceUrl: process.env['ACCOUNT_LOOKUP_SERVICE_URL'] || 'localhost:50059',
-    referenceDataServiceUrl: process.env['REFERENCE_DATA_SERVICE_URL'] || 'localhost:50060',
-    validationServiceUrl: process.env['VALIDATION_SERVICE_URL'] || 'localhost:50053',
-    enrichmentTimeoutMs: parseInt(process.env['ENRICHMENT_TIMEOUT_MS'] || '5000', 10),
-    accountLookupTimeoutMs: parseInt(process.env['ACCOUNT_LOOKUP_TIMEOUT_MS'] || '3000', 10),
-    authMethodTimeoutMs: parseInt(process.env['AUTH_METHOD_TIMEOUT_MS'] || '3000', 10),
-    maxRetryAttempts: parseInt(process.env['MAX_RETRY_ATTEMPTS'] || '3', 10),
-    retryBackoffMs: parseInt(process.env['RETRY_BACKOFF_MS'] || '1000', 10),
-    useMockAccountLookup: process.env['USE_MOCK_ACCOUNT_LOOKUP'] === 'true'
-  };
+export const config: ServiceConfig = {
+  grpcPort: parseInt(process.env['GRPC_PORT'] || '50052', 10),
+  serviceName: process.env['SERVICE_NAME'] || 'fast-enrichment-service',
+  logLevel: process.env['LOG_LEVEL'] || 'info',
+  environment: process.env['ENVIRONMENT'] || 'development',
+  country: process.env['COUNTRY'] || 'SG',
+  defaultCurrency: process.env['DEFAULT_CURRENCY'] || 'SGD',
+  accountLookupServiceUrl: process.env['ACCOUNT_LOOKUP_SERVICE_URL'] || 'localhost:50059',
+  referenceDataServiceUrl: process.env['REFERENCE_DATA_SERVICE_URL'] || 'localhost:50060',
+  validationServiceUrl: process.env['VALIDATION_SERVICE_URL'] || 'localhost:50053',
+  enrichmentTimeoutMs: parseInt(process.env['ENRICHMENT_TIMEOUT_MS'] || '5000', 10),
+  accountLookupTimeoutMs: parseInt(process.env['ACCOUNT_LOOKUP_TIMEOUT_MS'] || '3000', 10),
+  authMethodTimeoutMs: parseInt(process.env['AUTH_METHOD_TIMEOUT_MS'] || '3000', 10),
+  maxRetryAttempts: parseInt(process.env['MAX_RETRY_ATTEMPTS'] || '3', 10),
+  retryBackoffMs: parseInt(process.env['RETRY_BACKOFF_MS'] || '1000', 10),
+  useMockAccountLookup: process.env['USE_MOCK_ACCOUNT_LOOKUP'] === 'true',
+  database: {
+    projectId: process.env['SPANNER_PROJECT_ID'] || 'gpp-g3-project',
+    instanceId: process.env['SPANNER_INSTANCE_ID'] || 'gpp-g3-instance',
+    databaseId: process.env['SPANNER_DATABASE_ID'] || 'gpp-g3-database'
+  }
 };
 
-export const config = {
-  grpcPort: parseInt(process.env.GRPC_PORT || '50052'),
-  grpcServices: {
-    accountLookupUrl: process.env.ACCOUNT_LOOKUP_URL || 'localhost:50059',
-    referenceDataUrl: process.env.REFERENCE_DATA_URL || 'localhost:50060',
-    validationUrl: process.env.VALIDATION_URL || 'localhost:50053'
-  },
-  accountLookupTimeoutMs: parseInt(process.env.ACCOUNT_LOOKUP_TIMEOUT_MS || '5000'),
-  authMethodTimeoutMs: parseInt(process.env.AUTH_METHOD_TIMEOUT_MS || '3000'),
-  database: {
-    projectId: process.env.SPANNER_PROJECT_ID || 'gpp-g3-project',
-    instanceId: process.env.SPANNER_INSTANCE_ID || 'gpp-g3-instance',
-    databaseId: process.env.SPANNER_DATABASE_ID || 'gpp-g3-database'
-  },
-  logging: {
-    level: process.env.LOG_LEVEL || 'info'
-  }
-}; 
+// Backward compatibility - export function that returns the config
+export const getConfig = (): ServiceConfig => config; 

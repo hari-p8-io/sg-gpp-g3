@@ -8,9 +8,9 @@ export class SingaporeAssertions extends GenericAssertions {
    * Validates that XML contains Singapore-specific elements
    */
   static expectValidSingaporeXML(xmlContent: string, expect: any): void {
-    this.expectValidXML(xmlContent, expect);
-    this.expectValidCurrencyCode('SGD', expect);
-    this.expectValidCountryCode('SG', expect);
+    SingaporeAssertions.expectValidXML(xmlContent, expect);
+    SingaporeAssertions.expectValidCurrencyCode('SGD', expect);
+    SingaporeAssertions.expectValidCountryCode('SG', expect);
     expect(xmlContent).toContain('Ctry>SG</Ctry>');
     expect(xmlContent).toContain('Ccy="SGD"');
   }
@@ -60,7 +60,7 @@ export class SingaporeAssertions extends GenericAssertions {
    * Validates enrichment service response for Singapore
    */
   static expectValidSingaporeEnrichmentResponse(response: any, expect: any): void {
-    this.expectSuccessfulGrpcResponse(response, expect);
+    SingaporeAssertions.expectSuccessfulGrpcResponse(response, expect);
     expect(response.enrichedData).toBeDefined();
     expect(response.enrichedData.country).toBe('SG');
     expect(response.enrichedData.currency).toBe('SGD');
@@ -74,7 +74,7 @@ export class SingaporeAssertions extends GenericAssertions {
     expect(message.metadata).toBeDefined();
     expect(message.metadata.country).toBe('SG');
     expect(message.metadata.currency).toBe('SGD');
-    this.expectValidSingaporeXML(message.xmlPayload, expect);
+    SingaporeAssertions.expectValidSingaporeXML(message.xmlPayload, expect);
   }
 
   /**

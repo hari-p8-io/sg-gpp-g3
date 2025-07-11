@@ -13,6 +13,24 @@ export class AccountLookupHandler {
     try {
       const request = call.request;
       
+      // Validate required input fields
+      const validationError = this.validateLookupAccountRequest(request);
+      if (validationError) {
+        logger.warn('gRPC LookupAccount request validation failed', {
+          error: validationError,
+          messageId: request.message_id,
+          puid: request.puid,
+          cdtrAcctId: request.cdtr_acct_id,
+          messageType: request.message_type
+        });
+
+        callback({
+          code: grpc.status.INVALID_ARGUMENT,
+          message: validationError
+        });
+        return;
+      }
+      
       logger.info('gRPC LookupAccount request received', {
         messageId: request.message_id,
         puid: request.puid,
@@ -125,6 +143,57 @@ export class AccountLookupHandler {
       });
     }
   };
+
+  private validateLookupAccountRequest(request: any): string | null {
+    // Check if request exists
+    if (!request) {
+      return 'Request is required';
+    }
+
+    // Validate message_id
+    if (!request.message_id || typeof request.message_id !== 'string' || request.message_id.trim() === '') {
+      return 'message_id is required and must be a non-empty string';
+    }
+
+    // Validate puid
+    if (!request.puid || typeof request.puid !== 'string' || request.puid.trim() === '') {
+      return 'puid is required and must be a non-empty string';
+    }
+
+    // Validate cdtr_acct_id
+    if (!request.cdtr_acct_id || typeof request.cdtr_acct_id !== 'string' || request.cdtr_acct_id.trim() === '') {
+      return 'cdtr_acct_id is required and must be a non-empty string';
+    }
+
+    // Validate message_type
+    if (!request.message_type || typeof request.message_type !== 'string' || request.message_type.trim() === '') {
+      return 'message_type is required and must be a non-empty string';
+    }
+
+    // Additional validation for message_id format (UUID-like)
+    if (request.message_id.length < 8) {
+      return 'message_id must be at least 8 characters long';
+    }
+
+    // Additional validation for puid format (UUID-like)
+    if (request.puid.length < 8) {
+      return 'puid must be at least 8 characters long';
+    }
+
+    // Additional validation for cdtr_acct_id format (account ID)
+    if (request.cdtr_acct_id.length < 3) {
+      return 'cdtr_acct_id must be at least 3 characters long';
+    }
+
+    // Additional validation for message_type (should be valid message type)
+    const validMessageTypes = ['pacs.008.001.10', 'pacs.002.001.15', 'pacs.004.001.12', 'pain.001.001.11', 'pain.002.001.12'];
+    if (!validMessageTypes.includes(request.message_type)) {
+      return `message_type must be one of: ${validMessageTypes.join(', ')}`;
+    }
+
+    // All validations passed
+    return null;
+  }
 
   private convertEnrichmentDataToGrpc(enrichmentData: any): any {
     const grpcEnrichmentData: any = {

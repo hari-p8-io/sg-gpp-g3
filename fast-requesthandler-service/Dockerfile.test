@@ -2,10 +2,6 @@ FROM mcr.microsoft.com/playwright:v1.40.0-focal
 
 WORKDIR /app
 
-# Install Node.js 18 (if not already available)
-RUN curl -fsSL https://deb.nodesource.com/setup_18.x | bash - && \
-    apt-get install -y nodejs
-
 # Copy package files
 COPY package*.json ./
 
@@ -27,6 +23,10 @@ RUN mkdir -p test-results playwright-report
 # Install playwright browsers (already in base image but ensuring latest)
 RUN npx playwright install --with-deps
 
+# Install grpc_health_probe for health checks
+RUN wget -qO /bin/grpc_health_probe https://github.com/grpc-ecosystem/grpc-health-probe/releases/download/v0.4.22/grpc_health_probe-linux-amd64 && \
+    chmod +x /bin/grpc_health_probe
+
 # Add wait script for service readiness
 COPY <<EOF /app/wait-for-services.sh
 #!/bin/bash
@@ -34,9 +34,9 @@ set -e
 
 echo "Waiting for services to be ready..."
 
-# Wait for fast-requesthandler-service
+# Wait for fast-requesthandler-service (gRPC health check)
 echo "Waiting for fast-requesthandler-service..."
-until curl -f http://fast-requesthandler-service:3001/health; do
+until grpc_health_probe -addr=fast-requesthandler-service:50051 -service=gpp.g3.requesthandler.MessageHandler; do
   echo "fast-requesthandler-service not ready yet, waiting..."
   sleep 5
 done
@@ -67,9 +67,9 @@ ENV NODE_ENV=test
 ENV CI=true
 ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 
-# Health check
+# Health check using gRPC health probe
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-  CMD curl -f http://localhost:3001/health || exit 1
+  CMD grpc_health_probe -addr=localhost:50051 -service=gpp.g3.requesthandler.MessageHandler || exit 1
 
 # Default command to run tests
 CMD ["sh", "-c", "./wait-for-services.sh && npm run test:e2e"] 

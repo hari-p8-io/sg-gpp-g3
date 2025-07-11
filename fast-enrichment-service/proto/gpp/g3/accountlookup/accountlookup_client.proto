@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package gpp.g3.accountlookup;
 
-import "enrichment_service.proto";
+import "gpp/g3/enrichment/enrichment_service.proto";
 
 service AccountLookupService {
   // Lookup account information and return enrichment data

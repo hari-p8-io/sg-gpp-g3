@@ -24,7 +24,8 @@
     "fast-xml-parser": "^4.4.1",
     "joi": "^17.13.3",
     "zod": "^3.23.8",
-    "@gpp/pw-core": "^1.0.0"
+    "@gpp/pw-core": "^1.0.0",
+    "@gpp/logger": "^1.0.0"
   },
   "devDependencies": {
     "@types/node": "^22.5.1",

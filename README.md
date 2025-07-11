@@ -1,239 +1,222 @@
-# G3 Payment Platform (GPPG3) - Implementation Repository
+# G3 Payment Platform (GPPG3) - Singapore Payment Processing System
 
-## 🏗️ **Repository Structure**
+## 🏗️ **Project Overview**
 
-This repository contains the Singapore G3 Payment Platform implementation with a clean, organized structure:
+The Singapore G3 Payment Platform (GPPG3) is a **complete microservices-based payment processing system** designed for high-performance PACS message processing with intelligent routing based on account systems (VAM/MDZ/MEPS).
 
-```
-GPPG3/
-├── 📋 CURRENT_IMPLEMENTATION_STATUS.md    # Complete system status
-├── 📋 SERVICE_IMPLEMENTATION_SUMMARY.md   # Service overview
-├── 📋 README.md                           # This file
-├── 🔧 docker-compose.yml                  # Docker configuration
-├── 🔧 package.json                        # Root dependencies
-├── 🔧 .gitignore                          # Git ignore rules
-├── 🔧 node_modules/                       # Dependencies
-├── 🧪 pw-core/                            # Core Playwright testing framework
-├── 🛠️ utilities/                          # Utility scripts and tools
-├── 🚀 fast-requesthandler-service/        # Entry point service
-├── 🚀 fast-enrichment-service/            # Central orchestration hub
-├── 🚀 fast-accountlookup-service/         # Account system detection
-├── 🚀 fast-referencedata-service/         # Authentication method lookup
-├── 🚀 fast-validation-service/            # Message validation
-├── 🚀 fast-orchestrator-service/          # Routing & orchestration
-├── 🚀 fast-accounting-service/            # Transaction processing
-└── 🚀 fast-limitcheck-service/            # Limit checking
-```
+## 🚀 **System Architecture**
 
-### **🧪 Core Testing Framework**
-- **`pw-core/`** - Playwright core testing framework with reusable test utilities
-- **`utilities/`** - Development scripts, test files, and configuration utilities
+### **Core Services**
+- **🎯 Request Handler** (50051) - PACS message entry point
+- **🔄 Enrichment Service** (50052) - Central orchestration hub  
+- **✅ Validation Service** (50053) - Message validation & Kafka publishing
+- **🎛️ Orchestrator** (3004) - Intelligent routing based on account systems
+- **🏦 Accounting Service** (8002) - Transaction processing
+- **⚖️ Limit Check Service** (3006) - Transaction limit validation
 
-### **🚀 Service Architecture**
-All services follow a consistent structure with proper TypeScript implementation, gRPC/HTTP APIs, and comprehensive logging.
+### **Supporting Services**
+- **🔍 Account Lookup** (50059) - Account system detection
+- **📊 Reference Data** (50060) - Authentication method lookup
+- **🔗 VAM/MDZ Mediation** - External system integration
 
-## 🎯 **Quick Start**
+## 🎯 **Key Features**
 
-### **1. System Status**
-- **Status**: ✅ **FULLY OPERATIONAL**
-- **Last Tested**: July 10, 2025
-- **Pipeline**: Complete end-to-end PACS message processing verified
+✅ **Complete PACS Message Processing** - PACS.008, PACS.002, CAMT messages  
+✅ **Intelligent Account System Detection** - VAM/MDZ/MEPS routing  
+✅ **Authentication Method Logic** - GROUPLIMIT, AFPTHENLIMIT, AFPONLY  
+✅ **Kafka Async Processing** - Reliable message queuing  
+✅ **gRPC High-Performance Communication** - Synchronous service calls  
+✅ **Comprehensive Testing** - End-to-end validation with Playwright
 
-### **2. Service Architecture**
-```
-RequestHandler (50051) → Enrichment (50052) → AccountLookup (50059) → 
-ReferenceData (50060) → Validation (50053) → Orchestrator (3004) → 
-Accounting (8002) + LimitCheck (3006) + VAM/MDZ Mediation
-```
+## 🚀 **Quick Start**
 
-### **3. Key Features**
-- ✅ **VAM/MDZ Account System Detection** - Automatic routing based on account numbers
-- ✅ **GROUPLIMIT Authentication** - Reference data lookup and validation
-- ✅ **Kafka Async Processing** - Reliable message queuing and processing
-- ✅ **gRPC Synchronous Communication** - High-performance service communication
-- ✅ **Health Monitoring** - All services include health check endpoints
-
-## 🚀 **Getting Started**
-
-### **Start All Services**
+### **1. Prerequisites**
 ```bash
-# Start infrastructure
-docker-compose up -d
-
-# Start all services (from utilities)
-./utilities/start-services.sh
-
-# Quick health check
-./utilities/1-service-health-check.sh
+# Install Node.js 18+ and Docker
+node --version  # Should be 18+
+docker --version
 ```
 
-### **Run Tests**
+### **2. Setup Project**
 ```bash
-# Full end-to-end test
-./utilities/test-full-flow.sh
-
-# Comprehensive testing
-./utilities/comprehensive-test.sh
-
-# VAM/MDZ flow testing
-./utilities/run-vam-mdz-test.sh
-```
-
-## 📊 **System Architecture**
-
-### **Message Flow - PACS008 Processing**
-1. **Request Handler** (Port 50051) - Receives PACS008 messages
-2. **Enrichment Service** (Port 50052) - Central orchestration hub
-3. **Account Lookup** (Port 50059) - Determines account system (VAM/MDZ)
-4. **Reference Data** (Port 50060) - Gets authentication method (GROUPLIMIT)
-5. **Validation Service** (Port 50053) - Validates enriched messages
-6. **Orchestrator** (Port 3004) - Routes based on account system
-7. **Accounting** (Port 8002) - Processes accounting transactions
-8. **Limit Check** (Port 3006) - Validates transaction limits
-9. **VAM/MDZ Mediation** - External system integration
-
-### **Account System Logic**
-- **VAM Accounts**: Account numbers starting with `999` or containing `VAM`
-- **MDZ Accounts**: All other account numbers
-- **Authentication**: GROUPLIMIT for accounts starting with `999*`
-
-### **Kafka Topics**
-- `validated-messages` - Messages after validation
-- `vam-messages` - Messages routed to VAM system
-- `accounting-messages` - Messages for accounting processing
-- `limitcheck-messages` - Messages for limit checking
-
-## 🛠️ **Development**
-
-### **Service Structure**
-Each service follows a consistent structure:
-```
-fast-[service-name]/
-├── src/                    # Source code
-├── proto/                  # gRPC protocol definitions
-├── package.json           # Dependencies
-├── README.md              # Service documentation
-├── IMPLEMENTATION_PLAN.md # Detailed implementation status
-└── [service-specific files]
-```
-
-### **Testing & Utilities**
-All testing scripts, utilities, and development tools are organized in the `utilities/` directory:
-- **Service Management**: Scripts to start/stop services
-- **Testing**: Comprehensive test suites for all scenarios
-- **Monitoring**: Kafka monitoring and logging utilities
-- **Documentation**: Test results and technical documentation
-
-## 📋 **Documentation**
-
-### **Implementation Status**
-- **[CURRENT_IMPLEMENTATION_STATUS.md](CURRENT_IMPLEMENTATION_STATUS.md)** - Complete system status
-- **[SERVICE_IMPLEMENTATION_SUMMARY.md](SERVICE_IMPLEMENTATION_SUMMARY.md)** - Service overview
-- **[utilities/README.md](utilities/README.md)** - Testing and utility documentation
-
-### **Service Documentation**
-Each service includes detailed documentation:
-- Implementation plans and current status
-- API specifications and endpoints
-- Configuration and deployment guides
-- Testing procedures and examples
-
-## 🔧 **Configuration**
-
-### **Environment Setup**
-```bash
-# Install dependencies
+# Clone and install dependencies
+git clone <repository-url>
+cd GPPG3
 npm install
 
 # Start infrastructure
 docker-compose up -d kafka zookeeper
 
-# Install service dependencies
-npm run install-all
+# Install all service dependencies
+npm run services:install
 ```
 
-### **Service Ports**
-- **50051**: Request Handler (gRPC)
-- **50052**: Enrichment Service (gRPC)
-- **50053**: Validation Service (gRPC)
-- **50059**: Account Lookup (gRPC)
-- **50060**: Reference Data (gRPC)
-- **3004**: Orchestrator (HTTP)
-- **3005**: VAM Mediation (HTTP)
-- **3006**: Limit Check (HTTP)
-- **8002**: Accounting (HTTP)
-- **9092**: Kafka Broker
+### **3. Start Services**
+```bash
+# Start all services for development
+npm run start:fast-requesthandler &
+npm run start:fast-enrichment &
+npm run start:fast-validation &
+npm run start:fast-orchestrator &
+
+# Or use utilities scripts
+cd utilities
+./start-services.sh
+```
+
+### **4. Test the System**
+```bash
+# Run comprehensive tests
+cd utilities
+./comprehensive-test.sh
+
+# Test specific flows
+./simple-vam-mdz-e2e-test.js
+```
+
+## 📁 **Project Structure**
+
+```
+GPPG3/
+├── 📄 README.md                           # This file
+├── 📄 package.json                        # Monorepo workspace configuration
+├── 🐳 docker-compose.yml                  # Service orchestration
+├── 📂 docs/                               # 📚 All documentation
+│   ├── 📂 guides/                         # Setup and technical guides
+│   ├── 📂 reports/                        # Implementation and test reports
+│   └── 📂 services/                       # Service-specific documentation
+├── 📂 utilities/                          # 🛠️ Development and testing tools
+├── 📂 fast-requesthandler-service/        # 🎯 Entry point service
+├── 📂 fast-enrichment-service/            # 🔄 Central orchestration hub
+├── 📂 fast-validation-service/            # ✅ Message validation
+├── 📂 fast-orchestrator-service/          # 🎛️ Intelligent routing
+├── 📂 fast-accounting-service/            # 🏦 Transaction processing
+├── 📂 fast-limitcheck-service/            # ⚖️ Limit checking
+├── 📂 fast-accountlookup-service/         # 🔍 Account system detection
+├── 📂 fast-referencedata-service/         # 📊 Authentication method lookup
+├── 📂 fast-vammediation-service/          # 🔗 VAM system integration
+├── 📂 fast-mdzmediation-service/          # 🔗 MDZ system integration
+└── 📂 pw-core/                            # 🧪 Core testing framework
+```
+
+## 🛠️ **Development**
+
+### **Available Scripts**
+```bash
+# Service management
+npm run services:install           # Install dependencies for all services
+npm run services:build             # Build all services
+npm run services:test              # Run tests for all services
+
+# Individual service commands
+npm run start:fast-requesthandler  # Start request handler
+npm run start:fast-enrichment      # Start enrichment service
+npm run start:fast-validation      # Start validation service
+npm run start:fast-orchestrator    # Start orchestrator service
+
+# Testing and utilities
+npm run pw-core:build              # Build core testing framework
+npm run pw-core:test               # Run core tests
+```
+
+### **Service Development**
+Each service follows a consistent structure:
+```
+fast-[service-name]/
+├── src/                    # TypeScript source code
+├── proto/                  # gRPC protocol definitions
+├── tests/                  # Playwright tests
+├── package.json           # Service dependencies
+├── README.md              # Service documentation
+├── Dockerfile             # Container configuration
+└── .env.example           # Environment variables
+```
+
+## 📚 **Documentation**
+
+### **📂 Centralized Documentation in `docs/`**
+- **[docs/README.md](docs/README.md)** - Complete documentation index
+- **[docs/guides/](docs/guides/)** - Setup guides and technical documentation
+- **[docs/reports/](docs/reports/)** - Implementation status and test reports
+- **[docs/services/](docs/services/)** - Service-specific documentation
+
+### **🛠️ Utilities & Testing**
+- **[utilities/README.md](utilities/README.md)** - Development tools and scripts
+- **[utilities/](utilities/)** - Testing scripts, monitoring tools, and utilities
 
 ## 🧪 **Testing**
 
 ### **Test Categories**
-1. **Unit Tests** - Individual service testing
-2. **Integration Tests** - Service-to-service communication
+1. **Unit Tests** - Individual service functionality
+2. **Integration Tests** - Service-to-service communication  
 3. **End-to-End Tests** - Complete message flow validation
-4. **Load Tests** - Performance and scalability testing
-5. **Scenario Tests** - Business logic validation
+4. **Performance Tests** - Load testing and benchmarking
 
-### **Test Execution**
+### **Running Tests**
 ```bash
-# Navigate to utilities for all testing
+# Navigate to utilities for comprehensive testing
 cd utilities
 
-# Run specific test categories
-./comprehensive-test.sh              # All tests
-./test-full-flow.sh                  # E2E flow
-./run-vam-mdz-test.sh               # VAM/MDZ scenarios
-./start-orchestration-test.sh       # Orchestration tests
+# Run all tests
+./comprehensive-test.sh
+
+# Run specific test scenarios
+./simple-vam-mdz-e2e-test.js       # VAM/MDZ routing tests
+./test-limit-check-scenario.js     # Limit checking tests
 ```
 
-## 🎯 **Production Readiness**
+## 🎯 **Message Flow**
 
-### **Current Status**
-- ✅ **All Services Operational**
-- ✅ **End-to-End Testing Complete**
-- ✅ **VAM/MDZ Routing Verified**
-- ✅ **Kafka Integration Working**
-- ✅ **Health Checks Implemented**
-- ✅ **Monitoring & Logging Active**
-
-### **Performance Metrics**
-- **Message Processing**: < 500ms average
-- **Account Lookup**: < 200ms average
-- **Reference Data**: < 100ms average
-- **Kafka Throughput**: 1000+ messages/second
-
-## 🚀 **Deployment**
-
-### **Docker Deployment**
-```bash
-# Build all services
-docker-compose build
-
-# Start complete system
-docker-compose up -d
-
-# Scale services
-docker-compose up -d --scale fast-enrichment-service=3
+### **PACS.008 Processing Flow**
+```
+1. Request Handler (50051) ← PACS.008 message
+2. Enrichment Service (50052) ← Orchestrates enrichment
+3. Account Lookup (50059) ← Determines VAM/MDZ system
+4. Reference Data (50060) ← Gets authentication method
+5. Validation Service (50053) ← Validates and publishes to Kafka
+6. Orchestrator (3004) ← Routes based on account system
+7. Accounting (8002) ← Processes transaction
+8. Limit Check (3006) ← Validates limits (if required)
+9. VAM/MDZ Mediation ← External system integration
 ```
 
-### **Kubernetes Ready**
-All services are containerized and ready for Kubernetes deployment with:
-- Health check endpoints
-- Graceful shutdown handling
-- Resource limit configurations
-- Service discovery integration
+### **Account System Logic**
+- **VAM System**: Account numbers starting with `999` or containing `VAM`
+- **MDZ System**: All other account numbers  
+- **Authentication**: GROUPLIMIT for government accounts, AFPTHENLIMIT for others
 
-## 📞 **Support**
+## 🔧 **Configuration**
 
-### **Troubleshooting**
-1. Check service health: `./utilities/1-service-health-check.sh`
-2. View logs: `./utilities/logs/[service-name].log`
-3. Test connectivity: `./utilities/quick-test.sh`
+### **Environment Variables**
+Key configuration files:
+- **`.env.example`** - Template for environment variables
+- **`docker-compose.yml`** - Service orchestration configuration
+- **`package.json`** - Workspace and script configuration
 
-### **Common Issues**
-- **Port Conflicts**: Use `lsof -i :[port]` to identify conflicts
-- **Kafka Issues**: Restart with `docker-compose restart kafka`
-- **Service Dependencies**: Ensure all services are running before testing
+### **Service Ports**
+- **50051**: Request Handler (gRPC)
+- **50052**: Enrichment Service (gRPC)  
+- **50053**: Validation Service (gRPC)
+- **50059**: Account Lookup Service (gRPC)
+- **50060**: Reference Data Service (gRPC)
+- **3004**: Orchestrator Service (HTTP)
+- **3005**: VAM Mediation Service (HTTP)
+- **3006**: Limit Check Service (HTTP)
+- **8002**: Accounting Service (HTTP)
+- **9092**: Kafka Broker
+
+## 🤝 **Contributing**
+
+1. **Setup Development Environment** - Follow Quick Start guide
+2. **Review Documentation** - Check `docs/` for comprehensive guides
+3. **Run Tests** - Use `utilities/` scripts for testing
+4. **Follow Service Structure** - Maintain consistent patterns across services
+5. **Update Documentation** - Keep docs current with changes
+
+## 📄 **License**
+
+This project is licensed under the ISC License - see the [LICENSE](LICENSE) file for details.
 
 ---
 
-**🎯 The Singapore G3 Payment Platform is production-ready with comprehensive testing and monitoring capabilities.** 
+**🚀 Ready to start? Check out the [Quick Start](#-quick-start) guide or explore the [documentation](docs/README.md)!** 

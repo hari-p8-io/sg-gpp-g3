@@ -40,7 +40,7 @@ export class ReferenceDataClient {
 
   private initializeClient(): void {
     try {
-      const protoPath = path.join(__dirname, '../../../proto/referencedata_client.proto');
+      const protoPath = path.join(__dirname, '../../../proto/gpp/g3/referencedata/referencedata_client.proto');
       
       // Check if proto file exists
       if (!require('fs').existsSync(protoPath)) {

@@ -6,6 +6,7 @@
   "private": true,
   "workspaces": [
     "pw-core",
+    "fast-logger",
     "fast-requesthandler-service",
     "fast-enrichment-service",
     "fast-validation-service",

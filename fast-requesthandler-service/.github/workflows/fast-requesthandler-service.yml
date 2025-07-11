@@ -20,7 +20,7 @@ env:
 jobs:
   test:
     runs-on: ubuntu-latest
-    
+
     services:
       # Cloud Spanner Emulator
       spanner-emulator:
@@ -95,12 +95,104 @@ jobs:
 
       - name: Wait for Kafka to be ready
         run: |
-          timeout 60 bash -c 'until docker exec $(docker ps -q --filter "ancestor=confluentinc/cp-kafka:7.4.0") kafka-topics --bootstrap-server localhost:9092 --list; do sleep 5; done'
+          # Function to get Kafka container with robust identification
+          get_kafka_container() {
+            # Try multiple methods to identify the correct Kafka container
+            local container_id=""
+            
+            # Method 1: Try GitHub Actions service label (most specific)
+            container_id=$(docker ps -q --filter "ancestor=confluentinc/cp-kafka:7.4.0" --filter "label=com.github.actions.service=kafka" | head -1)
+            
+            # Method 2: Filter by exposed port (Kafka typically on 9092)
+            if [ -z "$container_id" ]; then
+              container_id=$(docker ps -q --filter "ancestor=confluentinc/cp-kafka:7.4.0" --filter "publish=9092" | head -1)
+            fi
+            
+            # Method 3: Get the most recently created container with the image
+            if [ -z "$container_id" ]; then
+              container_id=$(docker ps -q --filter "ancestor=confluentinc/cp-kafka:7.4.0" --format "table {{.ID}}\t{{.CreatedAt}}" | sort -k2 -r | head -1 | cut -f1)
+            fi
+            
+            # Method 4: Fallback to first container (with validation)
+            if [ -z "$container_id" ]; then
+              all_containers=$(docker ps -q --filter "ancestor=confluentinc/cp-kafka:7.4.0")
+              container_count=$(echo "$all_containers" | wc -l)
+              if [ "$container_count" -eq 1 ]; then
+                container_id="$all_containers"
+              elif [ "$container_count" -gt 1 ]; then
+                echo "Warning: Multiple Kafka containers found. Using the first one."
+                container_id=$(echo "$all_containers" | head -1)
+              fi
+            fi
+            
+            echo "$container_id"
+          }
+          
+          KAFKA_CONTAINER=$(get_kafka_container)
+          if [ -z "$KAFKA_CONTAINER" ]; then
+            echo "Error: No Kafka container found!"
+            echo "Available containers:"
+            docker ps --filter "ancestor=confluentinc/cp-kafka:7.4.0"
+            exit 1
+          fi
+          
+          echo "Using Kafka container: $KAFKA_CONTAINER"
+          echo "Container details:"
+          docker inspect "$KAFKA_CONTAINER" --format '{{.Name}} ({{.Config.Image}})'
+          
+          timeout 60 bash -c "until docker exec $KAFKA_CONTAINER kafka-topics --bootstrap-server localhost:9092 --list >/dev/null 2>&1; do echo 'Waiting for Kafka...'; sleep 5; done"
+          echo "Kafka is ready!"
 
       - name: Create Kafka topics
         run: |
-          docker exec $(docker ps -q --filter "ancestor=confluentinc/cp-kafka:7.4.0") kafka-topics --create --topic pacs-response-messages --bootstrap-server localhost:9092 --partitions 1 --replication-factor 1 || true
-          docker exec $(docker ps -q --filter "ancestor=confluentinc/cp-kafka:7.4.0") kafka-topics --create --topic pacs-messages --bootstrap-server localhost:9092 --partitions 1 --replication-factor 1 || true
+          # Function to get Kafka container with robust identification  
+          get_kafka_container() {
+            # Try multiple methods to identify the correct Kafka container
+            local container_id=""
+            
+            # Method 1: Try GitHub Actions service label (most specific)
+            container_id=$(docker ps -q --filter "ancestor=confluentinc/cp-kafka:7.4.0" --filter "label=com.github.actions.service=kafka" | head -1)
+            
+            # Method 2: Filter by exposed port (Kafka typically on 9092)
+            if [ -z "$container_id" ]; then
+              container_id=$(docker ps -q --filter "ancestor=confluentinc/cp-kafka:7.4.0" --filter "publish=9092" | head -1)
+            fi
+            
+            # Method 3: Get the most recently created container with the image
+            if [ -z "$container_id" ]; then
+              container_id=$(docker ps -q --filter "ancestor=confluentinc/cp-kafka:7.4.0" --format "table {{.ID}}\t{{.CreatedAt}}" | sort -k2 -r | head -1 | cut -f1)
+            fi
+            
+            # Method 4: Fallback to first container (with validation)
+            if [ -z "$container_id" ]; then
+              all_containers=$(docker ps -q --filter "ancestor=confluentinc/cp-kafka:7.4.0")
+              container_count=$(echo "$all_containers" | wc -l)
+              if [ "$container_count" -eq 1 ]; then
+                container_id="$all_containers"
+              elif [ "$container_count" -gt 1 ]; then
+                echo "Warning: Multiple Kafka containers found. Using the first one."
+                container_id=$(echo "$all_containers" | head -1)
+              fi
+            fi
+            
+            echo "$container_id"
+          }
+          
+          KAFKA_CONTAINER=$(get_kafka_container)
+          if [ -z "$KAFKA_CONTAINER" ]; then
+            echo "Error: No Kafka container found!"
+            echo "Available containers:"
+            docker ps --filter "ancestor=confluentinc/cp-kafka:7.4.0"
+            exit 1
+          fi
+          
+          echo "Using Kafka container: $KAFKA_CONTAINER"
+          echo "Creating Kafka topics..."
+          
+          docker exec $KAFKA_CONTAINER kafka-topics --create --topic pacs-response-messages --bootstrap-server localhost:9092 --partitions 1 --replication-factor 1 || true
+          docker exec $KAFKA_CONTAINER kafka-topics --create --topic pacs-messages --bootstrap-server localhost:9092 --partitions 1 --replication-factor 1 || true
+          
+          echo "Kafka topics created successfully!"
 
       - name: Setup database
         working-directory: ${{ env.SERVICE_NAME }}
@@ -120,8 +212,8 @@ jobs:
           npm run dev &
           SERVICE_PID=$!
           echo "SERVICE_PID=$SERVICE_PID" >> $GITHUB_ENV
-          # Wait for service to start
-          timeout 30 bash -c 'until curl -f http://localhost:3001/health; do sleep 2; done'
+          # Wait for service to start (gRPC health check)
+          timeout 30 bash -c 'until grpc_health_probe -addr=localhost:50051 -service=gpp.g3.requesthandler.MessageHandler; do sleep 2; done'
         env:
           NODE_ENV: test
           PORT: 3001
@@ -131,6 +223,11 @@ jobs:
           SPANNER_INSTANCE_ID: test-instance
           SPANNER_DATABASE_ID: test-database
           KAFKA_BROKERS: localhost:9092
+
+      - name: Install grpc_health_probe
+        run: |
+          wget -qO /usr/local/bin/grpc_health_probe https://github.com/grpc-ecosystem/grpc-health-probe/releases/download/v0.4.22/grpc_health_probe-linux-amd64
+          chmod +x /usr/local/bin/grpc_health_probe
 
       - name: Install Playwright browsers
         working-directory: ${{ env.SERVICE_NAME }}
@@ -176,7 +273,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: test
     if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -229,7 +326,7 @@ jobs:
                 - PORT=3001
                 - GRPC_PORT=50051
               healthcheck:
-                test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
+                test: ["CMD", "grpc_health_probe", "-addr=localhost:50051", "-service=gpp.g3.requesthandler.MessageHandler"]
                 interval: 30s
                 timeout: 10s
                 retries: 3
@@ -247,7 +344,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: build
     if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -268,18 +365,23 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Install grpc_health_probe for integration tests
+        run: |
+          wget -qO /usr/local/bin/grpc_health_probe https://github.com/grpc-ecosystem/grpc-health-probe/releases/download/v0.4.22/grpc_health_probe-linux-amd64
+          chmod +x /usr/local/bin/grpc_health_probe
+
       - name: Run integration tests with built image
         run: |
           cd deployment
           docker-compose up -d
-          
-          # Wait for service to be healthy
-          timeout 60 bash -c 'until curl -f http://localhost:3001/health; do sleep 5; done'
-          
+
+          # Wait for service to be healthy (gRPC health check)
+          timeout 60 bash -c 'until grpc_health_probe -addr=localhost:50051 -service=gpp.g3.requesthandler.MessageHandler; do sleep 5; done'
+
           # Run basic smoke tests
           echo "Running smoke tests..."
-          curl -f http://localhost:3001/health || exit 1
-          
+          grpc_health_probe -addr=localhost:50051 -service=gpp.g3.requesthandler.MessageHandler || exit 1
+
           # Cleanup
           docker-compose down -v
         env:
@@ -291,7 +393,7 @@ jobs:
     needs: integration-test
     if: github.ref == 'refs/heads/develop'
     environment: staging
-    
+
     steps:
       - name: Deploy to staging
         run: |
@@ -304,7 +406,7 @@ jobs:
     needs: integration-test
     if: github.ref == 'refs/heads/main'
     environment: production
-    
+
     steps:
       - name: Deploy to production
         run: |

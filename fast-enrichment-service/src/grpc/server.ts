@@ -9,15 +9,33 @@ export class EnrichmentGrpcServer {
   private server: grpc.Server;
   private enrichmentHandler: EnrichmentHandler;
 
-  constructor() {
+  // Private constructor to force use of factory method
+  private constructor(enrichmentHandler: EnrichmentHandler) {
     this.server = new grpc.Server();
-    this.enrichmentHandler = new EnrichmentHandler();
+    this.enrichmentHandler = enrichmentHandler;
     this.loadServices();
+  }
+
+  /**
+   * Static async factory method to create and initialize EnrichmentGrpcServer
+   * @returns Promise<EnrichmentGrpcServer> - Fully initialized server instance
+   * @throws Error if initialization fails
+   */
+  static async create(): Promise<EnrichmentGrpcServer> {
+    try {
+      const enrichmentHandler = await EnrichmentHandler.create();
+      return new EnrichmentGrpcServer(enrichmentHandler);
+    } catch (error) {
+      throw new Error(`Failed to initialize EnrichmentGrpcServer: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
   }
 
   private loadServices(): void {
     // Load enrichment service proto
-    const enrichmentProtoPath = path.join(__dirname, '../../proto/enrichment_service.proto');
+    const enrichmentProtoPath = path.join(__dirname, '../../proto/gpp/g3/enrichment/enrichment_service.proto');
+    console.log('EnrichmentGrpcServer: Trying to load proto from:', enrichmentProtoPath);
+    console.log('EnrichmentGrpcServer: __dirname is:', __dirname);
+    
     const enrichmentPackageDefinition = protoLoader.loadSync(enrichmentProtoPath, {
       keepCase: true,
       longs: String,
