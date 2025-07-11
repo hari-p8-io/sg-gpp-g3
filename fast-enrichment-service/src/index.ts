@@ -1,108 +1,93 @@
-import express from 'express';
-import cors from 'cors';
-import helmet from 'helmet';
-import morgan from 'morgan';
-import dotenv from 'dotenv';
-import { v4 as uuidv4 } from 'uuid';
+import { logger } from './utils/logger';
+import { EnrichmentGrpcServer } from './grpc/server';
 
-// Load environment variables
-dotenv.config();
+async function main(): Promise<void> {
+  let server: EnrichmentGrpcServer;
 
-const app = express();
-const PORT = process.env.PORT || 3002;
-
-// Middleware
-app.use(helmet());
-app.use(cors());
-app.use(morgan('combined'));
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-
-// Request ID middleware
-app.use((req, res, next) => {
-  req.headers['x-request-id'] = req.headers['x-request-id'] || uuidv4();
-  res.setHeader('x-request-id', req.headers['x-request-id']);
-  next();
-});
-
-// Health check endpoint
-app.get('/health', (req, res) => {
-  res.status(200).json({
-    service: 'fast-enrichment-service',
-    status: 'healthy',
-    timestamp: new Date().toISOString(),
-    requestId: req.headers['x-request-id']
-  });
-});
-
-// Enrichment endpoint
-app.post('/api/v1/enrich', async (req, res) => {
-  const requestId = req.headers['x-request-id'];
-  
   try {
-    // Basic request validation
-    if (!req.body || Object.keys(req.body).length === 0) {
-      return res.status(400).json({
-        error: 'Invalid request body',
-        requestId,
-        timestamp: new Date().toISOString()
-      });
+    // Create and initialize server with all async dependencies
+    server = await EnrichmentGrpcServer.create();
+    logger.info('✅ fast-enrichment-service initialized successfully');
+    
+    // Start the server
+    await server.start();
+    logger.info('🚀 fast-enrichment-service started successfully');
+  } catch (error) {
+    logger.error('❌ Failed to start fast-enrichment-service', { 
+      error: error instanceof Error ? error.message : 'Unknown error' 
+    });
+    process.exit(1);
+  }
+
+  // Shutdown coordinator to prevent concurrent shutdown attempts
+  let isShuttingDown = false;
+
+  const gracefulShutdown = async (signal: string): Promise<void> => {
+    if (isShuttingDown) {
+      logger.info(`🔄 Shutdown already in progress, ignoring ${signal}`);
+      return;
     }
 
-    // Simulate data enrichment
-    const enrichedData = {
-      ...req.body,
-      enrichedAt: new Date().toISOString(),
-      enrichmentData: {
-        customerSegment: 'premium',
-        riskScore: Math.floor(Math.random() * 100),
-        geoLocation: 'US-East',
-        accountType: 'business',
-        creditRating: 'A+',
-        lastTransactionTime: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000).toISOString()
-      },
-      service: 'fast-enrichment-service'
-    };
+    isShuttingDown = true;
+    logger.info(`🔄 Received ${signal}, shutting down gracefully...`);
 
-    res.status(200).json({
-      success: true,
-      data: enrichedData,
-      requestId,
-      timestamp: new Date().toISOString()
+    try {
+      if (server) {
+        await server.stop();
+        logger.info('✅ Server stopped successfully');
+      } else {
+        logger.info('✅ Server was not initialized, shutdown complete');
+      }
+      process.exit(0);
+    } catch (error) {
+      logger.error('❌ Error during graceful shutdown', { 
+        error: error instanceof Error ? error.message : 'Unknown error' 
+      });
+      process.exit(1);
+    }
+  };
+
+  // Graceful shutdown handlers
+  process.on('SIGTERM', () => {
+    // Don't await here - let the async function handle itself
+    gracefulShutdown('SIGTERM').catch((error) => {
+      logger.error('❌ Error in SIGTERM handler', { 
+        error: error instanceof Error ? error.message : 'Unknown error' 
+      });
+      process.exit(1);
     });
-  } catch (error) {
-    console.error('Error enriching data:', error);
-    res.status(500).json({
-      error: 'Internal server error',
-      requestId,
-      timestamp: new Date().toISOString()
+  });
+
+  process.on('SIGINT', () => {
+    // Don't await here - let the async function handle itself
+    gracefulShutdown('SIGINT').catch((error) => {
+      logger.error('❌ Error in SIGINT handler', { 
+        error: error instanceof Error ? error.message : 'Unknown error' 
+      });
+      process.exit(1);
     });
-  }
-});
-
-// Error handling middleware
-app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
-  console.error('Unhandled error:', err);
-  res.status(500).json({
-    error: 'Internal server error',
-    requestId: req.headers['x-request-id'],
-    timestamp: new Date().toISOString()
   });
-});
 
-// 404 handler
-app.use('*', (req, res) => {
-  res.status(404).json({
-    error: 'Endpoint not found',
-    requestId: req.headers['x-request-id'],
-    timestamp: new Date().toISOString()
+  process.on('uncaughtException', (error) => {
+    logger.error('❌ Uncaught Exception', { 
+      error: error.message, 
+      stack: error.stack 
+    });
+    process.exit(1);
   });
-});
 
-// Start server
-app.listen(PORT, () => {
-  console.log(`🚀 fast-enrichment-service is running on port ${PORT}`);
-  console.log(`📊 Health check: http://localhost:${PORT}/health`);
-});
+  process.on('unhandledRejection', (reason, promise) => {
+    logger.error('❌ Unhandled Rejection', { 
+      reason: reason instanceof Error ? reason.message : String(reason),
+      promise: String(promise)
+    });
+    process.exit(1);
+  });
+}
 
-export default app; 
+main().catch((error) => {
+  logger.error('❌ Fatal error in main', { 
+    error: error instanceof Error ? error.message : 'Unknown error' 
+  });
+  process.exit(1);
+}); 

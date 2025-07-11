@@ -1,0 +1,50 @@
+syntax = "proto3";
+
+package gpp.g3.accountlookup;
+
+message EnrichmentData {
+  string received_acct_id = 1;         // Original CdtrAcct ID
+  int32 lookup_status_code = 2;        // 200 for success, 404 for not found, 500 for error
+  string lookup_status_desc = 3;       // Human-readable status description
+  string normalized_acct_id = 4;       // Normalized account ID
+  string matched_acct_id = 5;          // Matched account ID
+  string partial_match = 6;            // Y or N
+  string is_physical = 7;              // Y or N
+  PhysicalAccountInfo physical_acct_info = 8; // Complex account information
+}
+
+message PhysicalAccountInfo {
+  string acct_id = 1;                  // Account ID
+  string acct_sys = 2;                 // Account system (MDZ)
+  string acct_group = 3;               // Account group (SGB)
+  string country = 4;                  // Country (SG)
+  string branch_id = 5;                // Branch ID (nullable)
+  AccountAttributes acct_attributes = 6;
+  AccountOpsAttributes acct_ops_attributes = 7;
+  string bicfi = 8;                    // Bank identifier (ANZBSG3MXXX)
+  string currency_code = 9;            // Currency (SGD)
+}
+
+message AccountAttributes {
+  string acct_type = 1;                // Account type (Physical, Virtual, etc.)
+  string acct_category = 2;            // Account category
+  string acct_purpose = 3;             // Account purpose
+}
+
+message AccountOpsAttributes {
+  string is_active = 1;                // Yes/No
+  string acct_status = 2;              // Active, Closed, Suspended
+  string open_date = 3;                // Account opening date
+  string expiry_date = 4;              // Account expiry date
+  Restraints restraints = 5;           // Account restraints
+}
+
+message Restraints {
+  string stop_all = 1;                 // N (No restrictions)
+  string stop_debits = 2;              // N
+  string stop_credits = 3;             // N
+  string stop_atm = 4;                 // N
+  string stop_eft_pos = 5;             // N
+  string stop_unknown = 6;             // N
+  string warnings = 7;                 // None
+} 

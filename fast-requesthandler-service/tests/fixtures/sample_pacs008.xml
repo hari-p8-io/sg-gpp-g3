@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Document xmlns="urn:iso:std:iso:20022:tech:xsd:pacs.008.001.02">
+  <FIToFICstmrCdtTrf>
+    <GrpHdr>
+      <MsgId>MSG-SG-001-20231207-001</MsgId>
+      <CreDtTm>2023-12-07T10:30:00+08:00</CreDtTm>
+      <NbOfTxs>1</NbOfTxs>
+      <SttlmInf>
+        <SttlmMtd>CLRG</SttlmMtd>
+      </SttlmInf>
+    </GrpHdr>
+    <CdtTrfTxInf>
+      <PmtId>
+        <InstrId>INSTR-SG-001</InstrId>
+        <EndToEndId>E2E-SG-001</EndToEndId>
+        <TxId>TXN-SG-001</TxId>
+      </PmtId>
+      <IntrBkSttlmAmt Ccy="SGD">1500.00</IntrBkSttlmAmt>
+      <InstdAmt Ccy="SGD">1500.00</InstdAmt>
+      <Dbtr>
+        <Nm>Tan Wei Ming</Nm>
+        <PstlAdr>
+          <Ctry>SG</Ctry>
+          <AdrLine>123 Orchard Road</AdrLine>
+          <AdrLine>Singapore 238858</AdrLine>
+        </PstlAdr>
+      </Dbtr>
+      <DbtrAcct>
+        <Id>
+          <Othr>
+            <Id>123456789001</Id>
+          </Othr>
+        </Id>
+      </DbtrAcct>
+      <Cdtr>
+        <Nm>Lim Mei Ling</Nm>
+        <PstlAdr>
+          <Ctry>SG</Ctry>
+        </PstlAdr>
+      </Cdtr>
+      <CdtrAcct>
+        <Id>
+          <Othr>
+            <Id>987654321001</Id>
+          </Othr>
+        </Id>
+      </CdtrAcct>
+      <RmtInf>
+        <Ustrd>Payment for services rendered</Ustrd>
+      </RmtInf>
+    </CdtTrfTxInf>
+  </FIToFICstmrCdtTrf>
+</Document> 

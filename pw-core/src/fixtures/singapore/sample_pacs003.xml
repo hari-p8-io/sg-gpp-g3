@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Document xmlns="urn:iso:std:iso:20022:tech:xsd:pacs.003.001.02">
+  <FIToFICstmrDrctDbt>
+    <GrpHdr>
+      <MsgId>DD-SG-001-20231207-001</MsgId>
+      <CreDtTm>2023-12-07T09:00:00+08:00</CreDtTm>
+      <NbOfTxs>1</NbOfTxs>
+      <SttlmInf>
+        <SttlmMtd>CLRG</SttlmMtd>
+      </SttlmInf>
+    </GrpHdr>
+    <DrctDbtTxInf>
+      <PmtId>
+        <InstrId>DD-INSTR-SG-001</InstrId>
+        <EndToEndId>DD-E2E-SG-001</EndToEndId>
+        <TxId>DD-TXN-SG-001</TxId>
+      </PmtId>
+      <IntrBkSttlmAmt Ccy="SGD">250.00</IntrBkSttlmAmt>
+      <InstdAmt Ccy="SGD">250.00</InstdAmt>
+      <Cdtr>
+        <Nm>SP Services Ltd</Nm>
+        <PstlAdr>
+          <Ctry>SG</Ctry>
+        </PstlAdr>
+      </Cdtr>
+      <CdtrAcct>
+        <Id>
+          <Othr>
+            <Id>SPSERVICES001</Id>
+          </Othr>
+        </Id>
+      </CdtrAcct>
+      <Dbtr>
+        <Nm>Wong Kai Seng</Nm>
+        <PstlAdr>
+          <Ctry>SG</Ctry>
+        </PstlAdr>
+      </Dbtr>
+      <DbtrAcct>
+        <Id>
+          <Othr>
+            <Id>CUST123456SG</Id>
+          </Othr>
+        </Id>
+      </DbtrAcct>
+      <RmtInf>
+        <Ustrd>Monthly utilities bill - December 2023</Ustrd>
+      </RmtInf>
+    </DrctDbtTxInf>
+  </FIToFICstmrDrctDbt>
+</Document> 

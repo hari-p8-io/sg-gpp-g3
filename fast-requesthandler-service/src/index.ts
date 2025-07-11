@@ -1,102 +1,171 @@
-import express from 'express';
-import cors from 'cors';
-import helmet from 'helmet';
-import morgan from 'morgan';
-import dotenv from 'dotenv';
-import { v4 as uuidv4 } from 'uuid';
+import * as grpc from '@grpc/grpc-js';
+import * as protoLoader from '@grpc/proto-loader';
+import { config } from 'dotenv';
+import path from 'path';
+import { MessageHandler } from './grpc/handlers/messageHandler';
+import { SpannerClient } from './database/spanner';
+import { ResponseHandler } from './kafka/responseHandler';
+import defaultConfig from './config/default';
 
 // Load environment variables
-dotenv.config();
+config();
 
-const app = express();
-const PORT = process.env.PORT || 3001;
-
-// Middleware
-app.use(helmet());
-app.use(cors());
-app.use(morgan('combined'));
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-
-// Request ID middleware
-app.use((req, res, next) => {
-  req.headers['x-request-id'] = req.headers['x-request-id'] || uuidv4();
-  res.setHeader('x-request-id', req.headers['x-request-id']);
-  next();
+// Load proto definition
+const PROTO_PATH = path.join(__dirname, '../proto/message_handler.proto');
+const packageDefinition = protoLoader.loadSync(PROTO_PATH, {
+  keepCase: true,
+  longs: String,
+  enums: String,
+  defaults: true,
+  oneofs: true,
 });
 
-// Health check endpoint
-app.get('/health', (req, res) => {
-  res.status(200).json({
-    service: 'fast-requesthandler-service',
-    status: 'healthy',
-    timestamp: new Date().toISOString(),
-    requestId: req.headers['x-request-id']
-  });
-});
+const messageProto = grpc.loadPackageDefinition(packageDefinition) as any;
 
-// Main request handling endpoint
-app.post('/api/v1/requests', (req, res) => {
-  const requestId = req.headers['x-request-id'];
-  
+// Global variables for graceful shutdown
+let responseHandler: ResponseHandler | null = null;
+let grpcServer: grpc.Server | null = null;
+
+async function startServer() {
+  // Initialize database connection
+  const spannerClient = new SpannerClient(defaultConfig.spanner);
   try {
-    // Basic request validation
-    if (!req.body || Object.keys(req.body).length === 0) {
-      return res.status(400).json({
-        error: 'Invalid request body',
-        requestId,
-        timestamp: new Date().toISOString()
-      });
-    }
-
-    // Simulate request processing
-    const processedRequest = {
-      requestId,
-      originalRequest: req.body,
-      processedAt: new Date().toISOString(),
-      status: 'processed',
-      service: 'fast-requesthandler-service'
-    };
-
-    res.status(200).json({
-      success: true,
-      data: processedRequest,
-      requestId,
-      timestamp: new Date().toISOString()
-    });
+    await spannerClient.initialize();
+    console.log('✅ Database connection established');
   } catch (error) {
-    console.error('Error processing request:', error);
-    res.status(500).json({
-      error: 'Internal server error',
-      requestId,
-      timestamp: new Date().toISOString()
-    });
+    console.warn('⚠️  Database initialization failed, continuing without database:', error);
   }
-});
 
-// Error handling middleware
-app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
-  console.error('Unhandled error:', err);
-  res.status(500).json({
-    error: 'Internal server error',
-    requestId: req.headers['x-request-id'],
-    timestamp: new Date().toISOString()
+  // Initialize Kafka response handler
+  const kafkaBrokers = (process.env.KAFKA_BROKERS || 'localhost:9092').split(',');
+  const completionTopic = process.env.COMPLETION_KAFKA_TOPIC || 'accounting-completion-messages';
+  const responseTopic = process.env.RESPONSE_KAFKA_TOPIC || 'pacs-response-messages';
+  
+  responseHandler = new ResponseHandler(
+    spannerClient,
+    kafkaBrokers,
+    'fast-requesthandler-response-group',
+    completionTopic,
+    responseTopic
+  );
+
+  try {
+    await responseHandler.initialize();
+    await responseHandler.start();
+    console.log('✅ Kafka response handler initialized and started');
+  } catch (error) {
+    console.warn('⚠️  Kafka response handler initialization failed, continuing without Kafka:', error);
+    responseHandler = null;
+  }
+
+  // Initialize handlers
+  const messageHandler = new MessageHandler(spannerClient);
+
+  // Create gRPC server
+  grpcServer = new grpc.Server();
+
+  // Add services
+  grpcServer.addService(messageProto.gpp.g3.requesthandler.MessageHandler.service, {
+    ProcessMessage: messageHandler.processMessage.bind(messageHandler),
+    GetMessageStatus: messageHandler.getMessageStatus.bind(messageHandler),
+    HealthCheck: messageHandler.healthCheck.bind(messageHandler),
+    GetAllMessages: messageHandler.getAllMessages.bind(messageHandler),
+    ClearMockStorage: messageHandler.clearMockStorage.bind(messageHandler),
+    GetMockStorageSize: messageHandler.getMockStorageSize.bind(messageHandler),
   });
-});
 
-// 404 handler
-app.use('*', (req, res) => {
-  res.status(404).json({
-    error: 'Endpoint not found',
-    requestId: req.headers['x-request-id'],
-    timestamp: new Date().toISOString()
+  // Start server
+  const port = defaultConfig.grpc.port;
+  grpcServer.bindAsync(
+    `0.0.0.0:${port}`,
+    grpc.ServerCredentials.createInsecure(),
+    (error, port) => {
+      if (error) {
+        console.error('🚨 Failed to start gRPC server:', error);
+        process.exit(1);
+      }
+      
+      console.log(`🚀 fast-requesthandler-service gRPC server started on port ${port}`);
+      console.log(`🏥 Health check: grpc://localhost:${port}/HealthCheck`);
+      console.log(`📊 Message Handler: grpc://localhost:${port}/ProcessMessage`);
+      console.log(`🔍 Message Status: grpc://localhost:${port}/GetMessageStatus`);
+      console.log(`🌍 Multi-market ready - Supports PACS, CAMT messages for various markets`);
+      
+      if (responseHandler) {
+        console.log(`📤 PACS.002 response generation: Active`);
+        console.log(`📥 Completion topic: ${completionTopic}`);
+        console.log(`📤 Response topic: ${responseTopic}`);
+      }
+      
+      grpcServer!.start();
+    }
+  );
+
+  // Graceful shutdown
+  process.on('SIGTERM', async () => {
+    console.log('🛑 Received SIGTERM, shutting down gracefully...');
+    await performGracefulShutdown();
   });
+
+  process.on('SIGINT', async () => {
+    console.log('🛑 Received SIGINT, shutting down gracefully...');
+    await performGracefulShutdown();
+  });
+
+  // Handle uncaught exceptions
+  process.on('uncaughtException', (error) => {
+    console.error('❌ Uncaught exception:', error);
+    performGracefulShutdown().then(() => process.exit(1));
+  });
+
+  process.on('unhandledRejection', (reason, promise) => {
+    console.error('❌ Unhandled rejection at:', promise, 'reason:', reason);
+    performGracefulShutdown().then(() => process.exit(1));
+  });
+}
+
+async function performGracefulShutdown() {
+  const shutdownPromises: Promise<void>[] = [];
+
+  // Stop Kafka response handler
+  if (responseHandler) {
+    console.log('🔄 Stopping Kafka response handler...');
+    shutdownPromises.push(
+      responseHandler.stop().then(() => {
+        console.log('✅ Kafka response handler stopped');
+      }).catch(error => {
+        console.error('❌ Error stopping Kafka response handler:', error);
+      })
+    );
+  }
+
+  // Stop gRPC server
+  if (grpcServer) {
+    console.log('🔄 Stopping gRPC server...');
+    shutdownPromises.push(
+      new Promise<void>((resolve) => {
+        grpcServer!.tryShutdown((error) => {
+          if (error) {
+            console.error('❌ Error during gRPC server shutdown:', error);
+          } else {
+            console.log('✅ gRPC server stopped');
+          }
+          resolve();
+        });
+      })
+    );
+  }
+
+  // Wait for all shutdown operations to complete
+  await Promise.all(shutdownPromises);
+  console.log('✅ Graceful shutdown complete');
+  process.exit(0);
+}
+
+// Start the server
+startServer().catch((error) => {
+  console.error('❌ Failed to start server:', error);
+  process.exit(1);
 });
 
-// Start server
-app.listen(PORT, () => {
-  console.log(`🚀 fast-requesthandler-service is running on port ${PORT}`);
-  console.log(`📊 Health check: http://localhost:${PORT}/health`);
-});
-
-export default app; 
+export default startServer; 

@@ -1,0 +1,71 @@
+{
+  "service": {
+    "name": "fast-requesthandler-service",
+    "port": 3001,
+    "grpcPort": 50051,
+    "logLevel": "info",
+    "environment": "test"
+  },
+  "database": {
+    "spanner": {
+      "emulatorHost": "localhost:9010",
+      "projectId": "test-project",
+      "instanceId": "test-instance",
+      "databaseId": "test-database"
+    }
+  },
+  "kafka": {
+    "brokers": ["localhost:9092"],
+    "clientId": "fast-requesthandler-service-ci",
+    "consumerGroupId": "fast-requesthandler-group-ci",
+    "topics": {
+      "pacsMessages": "pacs-messages",
+      "pacsResponses": "pacs-response-messages"
+    }
+  },
+  "services": {
+    "urls": {
+      "service": "http://localhost:3001",
+      "grpc": "localhost:50051",
+      "mockAccountLookup": "http://localhost:8080",
+      "mockReferenceData": "http://localhost:8081"
+    }
+  },
+  "test": {
+    "timeout": 30000,
+    "expectTimeout": 10000,
+    "retries": 3,
+    "workers": 1,
+    "reporter": "html",
+    "outputDir": "./test-results",
+    "reportDir": "./playwright-report"
+  },
+  "logging": {
+    "level": "debug",
+    "format": "json",
+    "pretty": false
+  },
+  "performance": {
+    "maxConcurrentMessages": 10,
+    "messageTimeout": 30000,
+    "retryAttempts": 3,
+    "retryDelay": 1000
+  },
+  "healthCheck": {
+    "interval": 30000,
+    "timeout": 5000,
+    "retries": 3
+  },
+  "mockServers": {
+    "logLevel": "INFO",
+    "port": 1080,
+    "accountLookup": {
+      "port": 8080,
+      "baseUrl": "http://localhost:8080"
+    },
+    "referenceData": {
+      "port": 8081,
+      "baseUrl": "http://localhost:8081"
+    }
+  }
+} 

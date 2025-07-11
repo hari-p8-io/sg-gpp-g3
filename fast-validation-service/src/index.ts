@@ -1,104 +1,114 @@
-import express from 'express';
-import cors from 'cors';
-import helmet from 'helmet';
-import morgan from 'morgan';
-import dotenv from 'dotenv';
-import { v4 as uuidv4 } from 'uuid';
+import * as grpc from '@grpc/grpc-js';
+import * as protoLoader from '@grpc/proto-loader';
+import path from 'path';
+import { logger } from './utils/logger';
+import { ValidationHandler } from './grpc/validationHandler';
+import { config } from './config/default';
 
-// Load environment variables
-dotenv.config();
+async function main(): Promise<void> {
+  const validationHandler = new ValidationHandler();
 
-const app = express();
-const PORT = process.env.PORT || 3003;
-
-// Middleware
-app.use(helmet());
-app.use(cors());
-app.use(morgan('combined'));
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-
-// Request ID middleware
-app.use((req, res, next) => {
-  req.headers['x-request-id'] = req.headers['x-request-id'] || uuidv4();
-  res.setHeader('x-request-id', req.headers['x-request-id']);
-  next();
-});
-
-// Health check endpoint
-app.get('/health', (req, res) => {
-  res.status(200).json({
-    service: 'fast-validation-service',
-    status: 'healthy',
-    timestamp: new Date().toISOString(),
-    requestId: req.headers['x-request-id']
+  // Load proto definition
+  const protoPath = path.join(__dirname, '../proto/validation_service.proto');
+  const packageDefinition = protoLoader.loadSync(protoPath, {
+    keepCase: true,
+    longs: String,
+    enums: String,
+    defaults: true,
+    oneofs: true,
   });
-});
 
-// Validation endpoint
-app.post('/api/v1/validate', (req, res) => {
-  const requestId = req.headers['x-request-id'];
-  
-  try {
-    // Basic request validation
-    if (!req.body || Object.keys(req.body).length === 0) {
-      return res.status(400).json({
-        error: 'Invalid request body',
-        requestId,
-        timestamp: new Date().toISOString()
-      });
+  const validationProto = grpc.loadPackageDefinition(packageDefinition) as any;
+
+  // Create and configure gRPC server
+  const server = new grpc.Server();
+
+  // Add validation service
+  server.addService(
+    validationProto.gpp.g3.validation.ValidationService.service,
+    {
+      ValidateEnrichedMessage: validationHandler.validateEnrichedMessage.bind(validationHandler),
+      HealthCheck: validationHandler.healthCheck.bind(validationHandler),
     }
+  );
 
-    // Mock validation logic
-    const isValid = Math.random() > 0.1; // 90% success rate
-    
-    res.status(isValid ? 200 : 400).json({
-      success: isValid,
-      data: {
-        validatedData: req.body,
-        validationResults: {
-          isValid,
-          errors: isValid ? [] : ['Sample validation error']
-        },
-        validatedAt: new Date().toISOString(),
-        service: 'fast-validation-service'
-      },
-      requestId,
-      timestamp: new Date().toISOString()
+  // Start server
+  try {
+    await new Promise<void>((resolve, reject) => {
+      server.bindAsync(
+        `0.0.0.0:${config.grpcPort}`,
+        grpc.ServerCredentials.createInsecure(),
+        (error, port) => {
+          if (error) {
+            logger.error('Failed to start validation service', { 
+              error: error.message 
+            });
+            reject(error);
+            return;
+          }
+
+          logger.info('🚀 fast-validation-service (gRPC) is running', {
+            port,
+            expectedCurrency: config.expectedCurrency,
+            expectedCountry: config.expectedCountry,
+            kafkaTopic: config.kafka.topic
+          });
+          
+          server.start();
+          resolve();
+        }
+      );
     });
   } catch (error) {
-    console.error('Error validating data:', error);
-    res.status(500).json({
-      error: 'Internal server error',
-      requestId,
-      timestamp: new Date().toISOString()
+    logger.error('❌ Failed to start fast-validation-service', { 
+      error: error instanceof Error ? error.message : 'Unknown error' 
     });
+    process.exit(1);
   }
-});
 
-// Error handling middleware
-app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
-  console.error('Unhandled error:', err);
-  res.status(500).json({
-    error: 'Internal server error',
-    requestId: req.headers['x-request-id'],
-    timestamp: new Date().toISOString()
+  // Graceful shutdown
+  process.on('SIGTERM', async () => {
+    logger.info('🔄 Received SIGTERM, shutting down gracefully...');
+    await shutdown(server, validationHandler);
+    process.exit(0);
   });
-});
 
-// 404 handler
-app.use('*', (req, res) => {
-  res.status(404).json({
-    error: 'Endpoint not found',
-    requestId: req.headers['x-request-id'],
-    timestamp: new Date().toISOString()
+  process.on('SIGINT', async () => {
+    logger.info('🔄 Received SIGINT, shutting down gracefully...');
+    await shutdown(server, validationHandler);
+    process.exit(0);
   });
-});
 
-// Start server
-app.listen(PORT, () => {
-  console.log(`🚀 fast-validation-service is running on port ${PORT}`);
-  console.log(`📊 Health check: http://localhost:${PORT}/health`);
-});
+  process.on('uncaughtException', (error) => {
+    logger.error('❌ Uncaught Exception', { 
+      error: error.message, 
+      stack: error.stack 
+    });
+    process.exit(1);
+  });
 
-export default app; 
+  process.on('unhandledRejection', (reason, promise) => {
+    logger.error('❌ Unhandled Rejection', { 
+      reason: reason instanceof Error ? reason.message : String(reason),
+      promise: String(promise)
+    });
+    process.exit(1);
+  });
+}
+
+async function shutdown(server: grpc.Server, handler: ValidationHandler): Promise<void> {
+  return new Promise((resolve) => {
+    handler.shutdown();
+    server.tryShutdown(() => {
+      logger.info('✅ Validation service shutdown complete');
+      resolve();
+    });
+  });
+}
+
+main().catch((error) => {
+  logger.error('❌ Fatal error in main', { 
+    error: error instanceof Error ? error.message : 'Unknown error' 
+  });
+  process.exit(1);
+}); 
