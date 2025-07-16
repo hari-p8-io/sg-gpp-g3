@@ -9,7 +9,7 @@ async function main(): Promise<void> {
   const validationHandler = new ValidationHandler();
 
   // Load proto definition
-  const protoPath = path.join(__dirname, '../proto/validation_service.proto');
+  const protoPath = path.join(__dirname, '../proto/ddi_validation_service.proto');
   const packageDefinition = protoLoader.loadSync(protoPath, {
     keepCase: true,
     longs: String,
@@ -23,9 +23,9 @@ async function main(): Promise<void> {
   // Create and configure gRPC server
   const server = new grpc.Server();
 
-  // Add validation service
+  // Add DDI validation service
   server.addService(
-    validationProto.gpp.g3.validation.ValidationService.service,
+    validationProto.gpp.g3.ddivalidation.DDIValidationService.service,
     {
       ValidateEnrichedMessage: validationHandler.validateEnrichedMessage.bind(validationHandler),
       HealthCheck: validationHandler.healthCheck.bind(validationHandler),

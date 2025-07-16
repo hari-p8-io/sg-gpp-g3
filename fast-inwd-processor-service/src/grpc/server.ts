@@ -2,41 +2,41 @@ import * as grpc from '@grpc/grpc-js';
 import * as protoLoader from '@grpc/proto-loader';
 import path from 'path';
 import { logger } from '../utils/logger';
-import { EnrichmentHandler } from './handlers/enrichmentHandler';
+import { InwdProcessorHandler } from './handlers/inwdProcessorHandler';
 import { config } from '../config/default';
 
-export class EnrichmentGrpcServer {
+export class InwdProcessorGrpcServer {
   private server: grpc.Server;
-  private enrichmentHandler: EnrichmentHandler;
+  private processorHandler: InwdProcessorHandler;
 
   // Private constructor to force use of factory method
-  private constructor(enrichmentHandler: EnrichmentHandler) {
+  private constructor(processorHandler: InwdProcessorHandler) {
     this.server = new grpc.Server();
-    this.enrichmentHandler = enrichmentHandler;
+    this.processorHandler = processorHandler;
     this.loadServices();
   }
 
   /**
-   * Static async factory method to create and initialize EnrichmentGrpcServer
-   * @returns Promise<EnrichmentGrpcServer> - Fully initialized server instance
+   * Static async factory method to create and initialize InwdProcessorGrpcServer
+   * @returns Promise<InwdProcessorGrpcServer> - Fully initialized server instance
    * @throws Error if initialization fails
    */
-  static async create(): Promise<EnrichmentGrpcServer> {
+  static async create(): Promise<InwdProcessorGrpcServer> {
     try {
-      const enrichmentHandler = await EnrichmentHandler.create();
-      return new EnrichmentGrpcServer(enrichmentHandler);
+      const processorHandler = await InwdProcessorHandler.create();
+      return new InwdProcessorGrpcServer(processorHandler);
     } catch (error) {
-      throw new Error(`Failed to initialize EnrichmentGrpcServer: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new Error(`Failed to initialize InwdProcessorGrpcServer: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 
   private loadServices(): void {
-    // Load enrichment service proto
-    const enrichmentProtoPath = path.join(__dirname, '../../proto/gpp/g3/enrichment/enrichment_service.proto');
-    console.log('EnrichmentGrpcServer: Trying to load proto from:', enrichmentProtoPath);
-    console.log('EnrichmentGrpcServer: __dirname is:', __dirname);
+    // Load inward processor service proto
+    const processorProtoPath = path.join(__dirname, '../../proto/gpp/g3/inwd-processor/inwd_processor_service.proto');
+    console.log('InwdProcessorGrpcServer: Trying to load proto from:', processorProtoPath);
+    console.log('InwdProcessorGrpcServer: __dirname is:', __dirname);
     
-    const enrichmentPackageDefinition = protoLoader.loadSync(enrichmentProtoPath, {
+    const processorPackageDefinition = protoLoader.loadSync(processorProtoPath, {
       keepCase: true,
       longs: String,
       enums: String,
@@ -44,16 +44,16 @@ export class EnrichmentGrpcServer {
       oneofs: true,
     });
 
-    const enrichmentProto = grpc.loadPackageDefinition(enrichmentPackageDefinition) as any;
+    const processorProto = grpc.loadPackageDefinition(processorPackageDefinition) as any;
 
-    // Add enrichment service
+    // Add inward processor service
     const serviceImplementation = {
-      EnrichMessage: this.enrichmentHandler.enrichMessage.bind(this.enrichmentHandler),
-      HealthCheck: this.enrichmentHandler.healthCheck.bind(this.enrichmentHandler)
+      ProcessMessage: this.processorHandler.enrichMessage.bind(this.processorHandler),
+      HealthCheck: this.processorHandler.healthCheck.bind(this.processorHandler)
     };
 
     this.server.addService(
-      enrichmentProto.gpp.g3.enrichment.EnrichmentService.service,
+      processorProto.gpp.g3.inwdprocessor.InwdProcessorService.service,
       serviceImplementation
     );
   }

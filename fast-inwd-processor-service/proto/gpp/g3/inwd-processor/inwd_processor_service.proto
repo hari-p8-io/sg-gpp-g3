@@ -1,16 +1,16 @@
 syntax = "proto3";
 
-package gpp.g3.enrichment;
+package gpp.g3.inwdprocessor;
 
-service EnrichmentService {
-  // Enrich a financial message with account lookup data
-  rpc EnrichMessage(EnrichmentRequest) returns (EnrichmentResponse);
+service InwdProcessorService {
+  // Process inward financial message with account lookup data
+  rpc ProcessMessage(ProcessorRequest) returns (ProcessorResponse);
   
-  // Health check for the enrichment service
+  // Health check for the inward processor service
   rpc HealthCheck(HealthCheckRequest) returns (HealthCheckResponse);
 }
 
-message EnrichmentRequest {
+message ProcessorRequest {
   string message_id = 1;          // UUID from request handler
   string puid = 2;                // G3I identifier
   string message_type = 3;        // PACS008, PACS007, PACS003, CAMT053, CAMT054, etc.
@@ -19,18 +19,18 @@ message EnrichmentRequest {
   int64 timestamp = 6;            // Original processing timestamp
 }
 
-message EnrichmentResponse {
+message ProcessorResponse {
   string message_id = 1;               // Echo back the UUID
   string puid = 2;                     // Echo back the G3I identifier
-  bool success = 3;                    // Whether enrichment was successful
+  bool success = 3;                    // Whether processing was successful
   string enriched_payload = 4;         // The enriched XML payload
   string error_message = 5;            // Error details if success = false
-  EnrichmentData enrichment_data = 6;  // Enrichment data from account lookup
-  int64 processed_at = 7;              // When enrichment completed
-  string next_service = 8;             // Next service in pipeline (fast-validation-service)
+  ProcessorData enrichment_data = 6;   // Enrichment data from account lookup
+  int64 processed_at = 7;              // When processing completed
+  string next_service = 8;             // Next service in pipeline (fast-ddi-validation-service)
 }
 
-message EnrichmentData {
+message ProcessorData {
   string received_acct_id = 1;         // Original CdtrAcct ID
   int32 lookup_status_code = 2;        // 200 for success
   string lookup_status_desc = 3;       // Success description

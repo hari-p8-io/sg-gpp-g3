@@ -1,12 +1,12 @@
 import * as grpc from '@grpc/grpc-js';
-import { ValidationService } from '../services/validationService';
+import { DDIValidationService } from '../services/validationService';
 import { logger } from '../utils/logger';
 
 export class ValidationHandler {
-  private validationService: ValidationService;
+  private validationService: DDIValidationService;
 
   constructor() {
-    this.validationService = new ValidationService();
+    this.validationService = new DDIValidationService();
   }
 
   validateEnrichedMessage = async (call: grpc.ServerUnaryCall<any, any>, callback: grpc.sendUnaryData<any>) => {

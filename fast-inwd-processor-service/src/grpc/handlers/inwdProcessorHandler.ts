@@ -1,5 +1,5 @@
 import * as grpc from '@grpc/grpc-js';
-import { EnrichmentService } from '../../services/enrichmentService';
+import { InwdProcessorService } from '../../services/enrichmentService';
 import { logger } from '../../utils/logger';
 
 // Health check status codes as defined in the gRPC health check protocol
@@ -88,11 +88,11 @@ interface HealthCheckGrpcResponse {
   message: string;
 }
 
-export class EnrichmentHandler {
-  private enrichmentService: EnrichmentService;
+export class InwdProcessorHandler {
+  private enrichmentService: InwdProcessorService;
 
   // Private constructor to force use of factory method
-  private constructor(enrichmentService: EnrichmentService) {
+  private constructor(enrichmentService: InwdProcessorService) {
     this.enrichmentService = enrichmentService;
   }
 
@@ -101,10 +101,10 @@ export class EnrichmentHandler {
    * @returns Promise<EnrichmentHandler> - Fully initialized handler instance
    * @throws Error if initialization fails
    */
-  static async create(): Promise<EnrichmentHandler> {
+  static async create(): Promise<InwdProcessorHandler> {
     try {
-      const enrichmentService = await EnrichmentService.create();
-      return new EnrichmentHandler(enrichmentService);
+      const enrichmentService = await InwdProcessorService.create();
+      return new InwdProcessorHandler(enrichmentService);
     } catch (error) {
       throw new Error(`Failed to initialize EnrichmentHandler: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }

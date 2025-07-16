@@ -84,7 +84,7 @@ const SAMPLE_PACS007_XML = `<?xml version="1.0" encoding="UTF-8"?>
 
 class PACS007RoutingTest {
   constructor() {
-    this.enrichmentClient = null;
+    this.processorClient = null;
     this.messageId = null;
   }
 
@@ -93,7 +93,7 @@ class PACS007RoutingTest {
       // Initialize enrichment service client
       console.log(`${colors.blue}🔌 Connecting to enrichment service...${colors.reset}`);
       
-      const protoPath = path.join(__dirname, '../fast-enrichment-service/proto/gpp/g3/enrichment/enrichment_service.proto');
+      const protoPath = path.join(__dirname, '../fast-inwd-processor-service/proto/gpp/g3/inwd-processor/inwd_processor_service.proto');
       const packageDefinition = protoLoader.loadSync(protoPath, {
         keepCase: true,
         longs: String,
@@ -102,8 +102,8 @@ class PACS007RoutingTest {
         oneofs: true,
       });
       
-      const enrichmentProto = grpc.loadPackageDefinition(packageDefinition);
-      this.enrichmentClient = new enrichmentProto.gpp.g3.enrichment.EnrichmentService(
+      const processorProto = grpc.loadPackageDefinition(packageDefinition);
+      this.processorClient = new processorProto.gpp.g3.inwdprocessor.InwdProcessorService(
         'localhost:50052',
         grpc.credentials.createInsecure()
       );
@@ -127,7 +127,7 @@ class PACS007RoutingTest {
       // Send PACS.007 message to enrichment service
       console.log(`${colors.blue}📤 Sending PACS.007 message to enrichment service...${colors.reset}`);
       
-      const enrichmentRequest = {
+      const processorRequest = {
         message_id: this.messageId,
         puid: `G3I${Date.now().toString().slice(-13)}`,
         message_type: 'PACS007',
@@ -141,7 +141,7 @@ class PACS007RoutingTest {
       };
 
       const response = await new Promise((resolve, reject) => {
-        this.enrichmentClient.EnrichMessage(enrichmentRequest, (error, response) => {
+        this.processorClient.ProcessMessage(processorRequest, (error, response) => {
           if (error) {
             reject(error);
           } else {

@@ -1,19 +1,19 @@
 import { logger } from './utils/logger';
-import { EnrichmentGrpcServer } from './grpc/server';
+import { InwdProcessorGrpcServer } from './grpc/server';
 
 async function main(): Promise<void> {
-  let server: EnrichmentGrpcServer;
+  let server: InwdProcessorGrpcServer;
 
   try {
     // Create and initialize server with all async dependencies
-    server = await EnrichmentGrpcServer.create();
-    logger.info('✅ fast-enrichment-service initialized successfully');
+    server = await InwdProcessorGrpcServer.create();
+    logger.info('✅ fast-inwd-processor-service initialized successfully');
     
     // Start the server
     await server.start();
-    logger.info('🚀 fast-enrichment-service started successfully');
+    logger.info('🚀 fast-inwd-processor-service started successfully');
   } catch (error) {
-    logger.error('❌ Failed to start fast-enrichment-service', { 
+    logger.error('❌ Failed to start fast-inwd-processor-service', { 
       error: error instanceof Error ? error.message : 'Unknown error' 
     });
     process.exit(1);

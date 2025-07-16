@@ -26,8 +26,8 @@ interface ValidationServiceClient {
 interface ValidationServicePackage {
   gpp: {
     g3: {
-      validation: {
-        ValidationService: new (
+      ddivalidation: {
+        DDIValidationService: new (
           address: string,
           credentials: grpc.ChannelCredentials
         ) => ValidationServiceClient;
@@ -144,7 +144,7 @@ export class ValidationClient {
 
   private initializeClient(serviceUrl: string): void {
     try {
-      const protoPath = path.join(__dirname, '../../../proto/gpp/g3/validation/validation_service.proto');
+      const protoPath = path.join(__dirname, '../../../../fast-ddi-validation-service/proto/ddi_validation_service.proto');
       const packageDefinition = protoLoader.loadSync(protoPath, {
         keepCase: true,
         longs: String,
@@ -155,15 +155,15 @@ export class ValidationClient {
 
       const validationProto = grpc.loadPackageDefinition(packageDefinition) as unknown as ValidationServicePackage;
       
-      this.client = new validationProto.gpp.g3.validation.ValidationService(
+      this.client = new validationProto.gpp.g3.ddivalidation.DDIValidationService(
         serviceUrl,
         grpc.credentials.createInsecure()
       );
 
       this.connected = true;
-      logger.info('Validation client initialized', { serviceUrl });
+      logger.info('DDI Validation client initialized', { serviceUrl });
     } catch (error) {
-      logger.error('Failed to initialize validation client', {
+      logger.error('Failed to initialize DDI validation client', {
         error: error instanceof Error ? error.message : 'Unknown error',
         serviceUrl
       });

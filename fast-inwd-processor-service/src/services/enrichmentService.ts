@@ -29,7 +29,7 @@ export interface EnrichmentResponse {
   kafkaPublished?: boolean; // NEW: Track Kafka publishing for PACS.008
 }
 
-export class EnrichmentService {
+export class InwdProcessorService {
   private accountLookupClient: AccountLookupClient;
   private referenceDataClient: ReferenceDataClient;
   private validationClient: ValidationClient;
@@ -54,7 +54,7 @@ export class EnrichmentService {
    * @returns Promise<EnrichmentService> - Fully initialized service instance
    * @throws Error if initialization fails
    */
-  static async create(): Promise<EnrichmentService> {
+  static async create(): Promise<InwdProcessorService> {
     try {
       // Initialize async clients first
       const accountLookupClient = await AccountLookupClient.create();
@@ -67,7 +67,7 @@ export class EnrichmentService {
       const kafkaClient = new KafkaClient();
       await kafkaClient.connect();
 
-      return new EnrichmentService(accountLookupClient, referenceDataClient, validationClient, kafkaClient);
+      return new InwdProcessorService(accountLookupClient, referenceDataClient, validationClient, kafkaClient);
     } catch (error) {
       throw new Error(`Failed to initialize EnrichmentService: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }

@@ -1,16 +1,16 @@
 syntax = "proto3";
 
-package gpp.g3.enrichment;
+package gpp.g3.inwdprocessor;
 
-service EnrichmentService {
-  // Enrich a financial message with additional data
-  rpc EnrichMessage(EnrichmentRequest) returns (EnrichmentResponse);
+service InwdProcessorService {
+  // Process an inward financial message with additional data
+  rpc ProcessMessage(ProcessorRequest) returns (ProcessorResponse);
   
-  // Health check for the enrichment service
+  // Health check for the inward processor service
   rpc HealthCheck(HealthCheckRequest) returns (HealthCheckResponse);
 }
 
-message EnrichmentRequest {
+message ProcessorRequest {
   string message_id = 1;    // The UUID from request handler
   string puid = 2;          // The G3I identifier
   string message_type = 3;  // PACS008, PACS007, PACS003, CAMT053, etc.
@@ -19,14 +19,14 @@ message EnrichmentRequest {
   int64 timestamp = 6;      // Original processing timestamp
 }
 
-message EnrichmentResponse {
+message ProcessorResponse {
   string message_id = 1;         // Echo back the UUID
   string puid = 2;               // Echo back the G3I identifier
-  bool success = 3;              // Whether enrichment was successful
+  bool success = 3;              // Whether processing was successful
   string enriched_payload = 4;   // The enriched XML payload
   string error_message = 5;      // Error details if success = false
   map<string, string> enrichment_data = 6; // Key-value pairs of enriched data
-  int64 processed_at = 7;        // When enrichment completed
+  int64 processed_at = 7;        // When processing completed
   string next_service = 8;       // Suggested next service in the pipeline
 }
 

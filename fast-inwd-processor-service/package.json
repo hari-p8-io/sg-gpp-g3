@@ -1,7 +1,7 @@
 {
-  "name": "fast-enrichment-service",
+  "name": "fast-inwd-processor-service",
   "version": "1.0.0",
-  "description": "Enriches PACS messages with account lookup data and forwards to validation service",
+  "description": "Processes inward PACS messages with account lookup data and routing to validation or direct Kafka",
   "main": "dist/index.js",
   "scripts": {
     "build": "tsc",
@@ -36,7 +36,7 @@
     "@typescript-eslint/eslint-plugin": "^6.0.0",
     "@typescript-eslint/parser": "^6.0.0"
   },
-  "keywords": ["microservice", "typescript", "grpc", "pacs", "enrichment", "singapore"],
+  "keywords": ["microservice", "typescript", "grpc", "pacs", "inward-processor", "singapore"],
   "author": "GPP G3 Team",
   "license": "ISC"
 } 

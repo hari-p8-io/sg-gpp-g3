@@ -54,7 +54,7 @@ export interface CountryValidation {
   validationMessage: string;
 }
 
-export class ValidationService {
+export class DDIValidationService {
   private readonly expectedCurrency: string;
   private readonly expectedCountry: string;
   private readonly isTestMode: boolean;

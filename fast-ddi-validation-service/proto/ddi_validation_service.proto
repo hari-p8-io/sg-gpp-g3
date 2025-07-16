@@ -1,12 +1,12 @@
 syntax = "proto3";
 
-package gpp.g3.validation;
+package gpp.g3.ddivalidation;
 
-option go_package = "github.com/gpp/g3/validation";
+option go_package = "github.com/gpp/g3/ddivalidation";
 
-// Validation service for financial message validation and Kafka publishing
-service ValidationService {
-  // Validate an enriched financial message
+// DDI Validation service for financial message validation and Kafka publishing
+service DDIValidationService {
+  // Validate an enriched financial message for DDI processing
   rpc ValidateEnrichedMessage(ValidateEnrichedMessageRequest) returns (ValidateEnrichedMessageResponse);
   
   // Health check

@@ -1,7 +1,7 @@
 {
-  "name": "fast-validation-service",
+  "name": "fast-ddi-validation-service",
   "version": "1.0.0",
-  "description": "Fast validation service for PACS message validation and Kafka publishing",
+  "description": "Fast DDI validation service for PACS message validation and Kafka publishing",
   "main": "dist/index.js",
   "scripts": {
     "build": "tsc",
@@ -36,7 +36,7 @@
     "eslint": "^8.57.0",
     "prettier": "^3.3.3"
   },
-  "keywords": ["grpc", "validation", "kafka", "pacs", "fast"],
+  "keywords": ["grpc", "ddi-validation", "kafka", "pacs", "fast"],
   "author": "GPP G3 Team",
   "license": "MIT"
 } 
