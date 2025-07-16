@@ -22,76 +22,79 @@ The **Fast Account Lookup Service** is a gRPC-based microservice that provides a
 
 ## Sequence Diagram
 
-```mermaid
-sequenceDiagram
-    participant Client as fast-inwd-processor-service
-    participant AL as fast-accountlookup-service
-    participant DB as Account Database
-    participant Mock as Mock Data Generator
-    
-    Client->>AL: LookupAccount(cdtrAcctId)
-    Note over AL: Validate request parameters
-    
-    alt Production Mode
-        AL->>DB: Query account database
-        DB->>AL: Return account details
-    else Stub Mode (Current)
-        AL->>Mock: Generate mock account data
-        Mock->>AL: Return enrichment data
-    end
-    
-    Note over AL: Determine account system (VAM/MDZ)
-    Note over AL: Build comprehensive enrichment data
-    Note over AL: Apply Singapore banking standards
-    
-    AL->>Client: AccountLookupResponse(enrichmentData)
+```
+┌─────────────────────────┐    ┌─────────────────────────┐    ┌─────────────────────────┐
+│ fast-inwd-processor     │    │ fast-accountlookup      │    │ Mock Data Generator     │
+│ service                 │    │ service                 │    │ (Current Implementation)│
+└─────────────────────────┘    └─────────────────────────┘    └─────────────────────────┘
+              │                              │                              │
+              │ LookupAccount(cdtrAcctId)    │                              │
+              │─────────────────────────────>│                              │
+              │                              │                              │
+              │                              │ Validate Request             │
+              │                              │ ◄─┐                          │
+              │                              │   │ Check Account ID         │
+              │                              │ ◄─┘                          │
+              │                              │                              │
+              │                              │ Generate Enrichment Data     │
+              │                              │─────────────────────────────>│
+              │                              │                              │
+              │                              │ Account Details (VAM/MDZ)    │
+              │                              │◄─────────────────────────────│
+              │                              │                              │
+              │                              │ Build Response               │
+              │                              │ ◄─┐                          │
+              │                              │   │ Singapore Banking Stds   │
+              │                              │ ◄─┘                          │
+              │                              │                              │
+              │ AccountLookupResponse        │                              │
+              │◄─────────────────────────────│                              │
 ```
 
 ---
 
 ## Class Diagram
 
-```mermaid
-classDiagram
-    class AccountLookupService {
-        +lookupAccount(request): Promise<AccountLookupResponse>
-        +healthCheck(): Promise<HealthStatus>
-        +validateRequest(request): string|null
-        +generateEnrichmentData(request): EnrichmentData
-        +handleSimulatedError(request): AccountLookupResponse
-        +createErrorResponse(request, code, message): AccountLookupResponse
-    }
-
-    class AccountLookupHandler {
-        -accountLookupService: AccountLookupService
-        +lookupAccount(call, callback): void
-        +healthCheck(call, callback): void
-        +getServiceInfo(call, callback): void
-        +validateLookupAccountRequest(request): string|null
-        +convertEnrichmentDataToGrpc(data): EnrichmentData
-    }
-
-    class MockDataGenerator {
-        +generateSingaporeAccountData(accountId): EnrichmentData
-        +simulateDelay(delayMs): Promise<void>
-        +shouldSimulateError(accountId): boolean
-        +createPhysicalAccountInfo(accountId, accountType): PhysicalAccountInfo
-        +generateAccountAttributes(accountType): AccountAttributes
-        +generateOperationalAttributes(): AccountOpsAttributes
-    }
-
-    class AccountUtils {
-        +getAccountSystem(accountId): string
-        +getAccountType(accountId): string
-        +normalizeAccountId(accountId): string
-        +shouldSimulateError(accountId): boolean
-        +generateBranchId(): string
-        +formatDate(date): string
-    }
-
-    AccountLookupService --> MockDataGenerator
-    AccountLookupService --> AccountUtils
-    AccountLookupHandler --> AccountLookupService
+```
+┌─────────────────────────────────┐
+│    AccountLookupHandler         │
+│─────────────────────────────────│
+│ - accountLookupService         │
+│─────────────────────────────────│
+│ + lookupAccount()              │
+│ + healthCheck()                │
+│ + getServiceInfo()             │
+│ + validateRequest()            │
+│ + convertToGrpc()              │
+└─────────────────────────────────┘
+                 │
+                 │ uses
+                 ▼
+┌─────────────────────────────────┐
+│    AccountLookupService         │
+│─────────────────────────────────│
+│─────────────────────────────────│
+│ + lookupAccount()              │
+│ + healthCheck()                │
+│ + validateRequest()            │
+│ + generateEnrichmentData()     │
+│ + handleSimulatedError()       │
+│ + createErrorResponse()        │
+└─────────────────────────────────┘
+         ┌───────┴───────┐
+         │               │
+         ▼               ▼
+┌─────────────────┐ ┌─────────────────┐
+│MockDataGenerator│ │  AccountUtils   │
+│─────────────────│ │─────────────────│
+│                 │ │                 │
+│─────────────────│ │─────────────────│
+│ + generateSGData│ │ + getAcctSystem │
+│ + simulateDelay │ │ + getAcctType   │
+│ + shouldSimError│ │ + normalizeId   │
+│ + createPhysical│ │ + generateBranch│
+│ + generateAttrib│ │ + formatDate    │
+└─────────────────┘ └─────────────────┘
 ```
 
 ---

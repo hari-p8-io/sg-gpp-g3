@@ -22,84 +22,81 @@ The **Fast Reference Data Service** is a gRPC-based microservice that provides a
 
 ## Sequence Diagram
 
-```mermaid
-sequenceDiagram
-    participant Client as fast-inwd-processor-service
-    participant RDS as fast-referencedata-service
-    participant Rules as Business Rules Engine
-    participant Cache as Reference Data Cache
-    
-    Client->>RDS: LookupAuthMethod(acctSys, acctId)
-    Note over RDS: Validate request parameters
-    
-    alt Cache Hit
-        RDS->>Cache: Check cache for auth method
-        Cache->>RDS: Return cached result
-    else Cache Miss
-        RDS->>Rules: Apply business rules
-        Rules->>Rules: Analyze account ID patterns
-        Rules->>Rules: Determine risk level
-        Rules->>Rules: Set limit profile
-        Rules->>RDS: Return auth method
-        RDS->>Cache: Store result in cache
-    end
-    
-    Note over RDS: Create reference data details
-    Note over RDS: Apply Singapore compliance rules
-    
-    RDS->>Client: AuthMethodResponse(authMethod, details)
+```
+┌─────────────────────────┐    ┌─────────────────────────┐    ┌─────────────────────────┐
+│ fast-inwd-processor     │    │ fast-referencedata      │    │ Business Rules Engine   │
+│ service                 │    │ service                 │    │                         │
+└─────────────────────────┘    └─────────────────────────┘    └─────────────────────────┘
+              │                              │                              │
+              │ LookupAuthMethod()           │                              │
+              │─────────────────────────────>│                              │
+              │                              │                              │
+              │                              │ Validate Request             │
+              │                              │ ◄─┐                          │
+              │                              │   │ Check Parameters         │
+              │                              │ ◄─┘                          │
+              │                              │                              │
+              │                              │ Apply Business Rules         │
+              │                              │─────────────────────────────>│
+              │                              │                              │
+              │                              │ Auth Method Decision         │
+              │                              │◄─────────────────────────────│
+              │                              │                              │
+              │                              │ Create Reference Data        │
+              │                              │ ◄─┐                          │
+              │                              │   │ • GROUPLIMIT (VAM/Gov)   │
+              │                              │   │ • AFPTHENLIMIT (Corp)    │
+              │                              │   │ • AFPONLY (Retail)       │
+              │                              │ ◄─┘                          │
+              │                              │                              │
+              │ AuthMethodResponse           │                              │
+              │◄─────────────────────────────│                              │
 ```
 
 ---
 
 ## Class Diagram
 
-```mermaid
-classDiagram
-    class ReferenceDataService {
-        -useMockData: boolean
-        +lookupAuthMethod(request): Promise<AuthMethodResponse>
-        +validateRequest(request): string|null
-        +determineAuthMethod(accountId): string
-        +createReferenceDataDetails(request, authMethod): ReferenceDataDetails
-        +determineRiskLevel(authMethod): string
-        +determineLimitProfile(acctSys, acctGrp, authMethod): string
-        +createErrorResponse(request, errorMessage): AuthMethodResponse
-    }
-
-    class ReferenceDataHandler {
-        -referenceDataService: ReferenceDataService
-        +lookupAuthMethod(call, callback): void
-        +healthCheck(call, callback): void
-        +convertRefDataDetailsToGrpc(details): any
-    }
-
-    class BusinessRulesEngine {
-        +applyAccountPatternRules(accountId): string
-        +applyLengthBasedRules(accountId): string
-        +applySystemSpecificRules(acctSys, accountId): string
-        +getSingaporeComplianceRules(): ComplianceRules
-        +determineApprovalRequirement(authMethod): boolean
-    }
-
-    class ReferenceDataCache {
-        -cache: Map<string, CacheEntry>
-        +get(key): CacheEntry|null
-        +set(key, value, ttl): void
-        +invalidate(key): void
-        +cleanup(): void
-    }
-
-    class Logger {
-        +logAuthMethodRequest(messageId, puid, acctId, acctSys): void
-        +logAuthMethodResponse(messageId, authMethod, success, processingTime): void
-        +logError(messageId, error, context): void
-    }
-
-    ReferenceDataService --> BusinessRulesEngine
-    ReferenceDataService --> ReferenceDataCache
-    ReferenceDataService --> Logger
-    ReferenceDataHandler --> ReferenceDataService
+```
+┌─────────────────────────────────┐
+│    ReferenceDataHandler         │
+│─────────────────────────────────│
+│ - referenceDataService         │
+│─────────────────────────────────│
+│ + lookupAuthMethod()           │
+│ + healthCheck()                │
+│ + convertToGrpc()              │
+└─────────────────────────────────┘
+                 │
+                 │ uses
+                 ▼
+┌─────────────────────────────────┐
+│    ReferenceDataService         │
+│─────────────────────────────────│
+│ - useMockData: boolean         │
+│─────────────────────────────────│
+│ + lookupAuthMethod()           │
+│ + validateRequest()            │
+│ + determineAuthMethod()        │
+│ + createReferenceDataDetails() │
+│ + determineRiskLevel()         │
+│ + determineLimitProfile()      │
+│ + createErrorResponse()        │
+└─────────────────────────────────┘
+         ┌───────┴───────┐
+         │               │
+         ▼               ▼
+┌─────────────────┐ ┌─────────────────┐
+│BusinessRulesEng │ │RefDataCache     │
+│─────────────────│ │─────────────────│
+│                 │ │ - cache: Map    │
+│─────────────────│ │─────────────────│
+│ + applyPatterns │ │ + get()         │
+│ + applyLength   │ │ + set()         │
+│ + applySystem   │ │ + invalidate()  │
+│ + getCompliance │ │ + cleanup()     │
+│ + determineReq  │ │                 │
+└─────────────────┘ └─────────────────┘
 ```
 
 ---

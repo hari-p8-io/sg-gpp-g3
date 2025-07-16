@@ -23,75 +23,74 @@ The **Fast DDI Validation Service** is a gRPC-based microservice responsible for
 
 ## Sequence Diagram
 
-```mermaid
-sequenceDiagram
-    participant Client as fast-inwd-processor-service
-    participant DDI as fast-ddi-validation-service
-    participant Kafka as Kafka Broker
-    participant Orch as fast-orchestrator-service
-    
-    Client->>DDI: ValidateEnrichedMessage(request)
-    Note over DDI: Extract message data
-    DDI->>DDI: Parse XML payload
-    DDI->>DDI: Validate currency (SGD)
-    DDI->>DDI: Validate country (SG)
-    DDI->>DDI: Validate enrichment data
-    DDI->>DDI: Convert XML to JSON
-    
-    alt Validation Successful
-        DDI->>Kafka: Publish to validated-messages topic
-        DDI->>Client: ValidationResponse(success=true)
-        Kafka->>Orch: Message consumed for orchestration
-    else Validation Failed
-        DDI->>Client: ValidationResponse(success=false, errors)
-    end
+```
+┌─────────────────────────┐    ┌─────────────────────────┐    ┌─────────────┐    ┌─────────────────────────┐
+│ fast-inwd-processor     │    │ fast-ddi-validation     │    │ Kafka       │    │ fast-orchestrator       │
+│ service                 │    │ service                 │    │ Broker      │    │ service                 │
+└─────────────────────────┘    └─────────────────────────┘    └─────────────┘    └─────────────────────────┘
+              │                              │                        │                        │
+              │ ValidateEnrichedMessage()    │                        │                        │
+              │─────────────────────────────>│                        │                        │
+              │                              │                        │                        │
+              │                              │ Extract & Validate     │                        │
+              │                              │ ◄─┐                    │                        │
+              │                              │   │ Parse XML          │                        │
+              │                              │   │ Validate SGD       │                        │
+              │                              │   │ Validate SG        │                        │
+              │                              │   │ Convert to JSON    │                        │
+              │                              │ ◄─┘                    │                        │
+              │                              │                        │                        │
+              │                              │ Publish validated msg  │                        │
+              │                              │───────────────────────>│                        │
+              │                              │                        │                        │
+              │ ValidationResponse(success)  │                        │                        │
+              │◄─────────────────────────────│                        │                        │
+              │                              │                        │ Consume for orchestration
+              │                              │                        │───────────────────────>│
 ```
 
 ---
 
 ## Class Diagram
 
-```mermaid
-classDiagram
-    class DDIValidationService {
-        +expectedCurrency: string
-        +expectedCountry: string
-        +isTestMode: boolean
-        +validateEnrichedMessage(request): Promise<ValidationResponse>
-        +performValidations(parsedXml, enrichmentData): Promise<ValidationResult>
-        +validateCurrency(currency): CurrencyValidation
-        +validateCountry(country): CountryValidation
-        +validateEnrichmentData(enrichmentData, errors): void
-        +validateXMLStructure(parsedXml, errors): void
-        +publishToKafka(message): Promise<boolean>
-        +healthCheck(): Promise<HealthStatus>
-    }
-
-    class ValidationHandler {
-        -validationService: DDIValidationService
-        +validateEnrichedMessage(call, callback): void
-        +healthCheck(call, callback): void
-        +convertEnrichmentDataFromGrpc(data): EnrichmentData
-        +convertValidationResultToGrpc(result): ValidationResult
-    }
-
-    class KafkaClient {
-        -producer: Producer
-        +publishValidatedMessage(message): Promise<boolean>
-        +healthCheck(): Promise<HealthStatus>
-        +connect(): Promise<void>
-        +disconnect(): Promise<void>
-    }
-
-    class XMLParser {
-        +parseXML(xmlPayload): any
-        +convertToJSON(xmlPayload, enrichmentData, messageId, puid, messageType): any
-        +extractFields(parsedXml): MessageFields
-    }
-
-    DDIValidationService --> KafkaClient
-    DDIValidationService --> XMLParser
-    ValidationHandler --> DDIValidationService
+```
+┌─────────────────────────────────┐
+│      ValidationHandler          │
+│─────────────────────────────────│
+│ - validationService            │
+│─────────────────────────────────│
+│ + validateEnrichedMessage()    │
+│ + healthCheck()                │
+│ + convertFromGrpc()            │
+└─────────────────────────────────┘
+                 │
+                 │ uses
+                 ▼
+┌─────────────────────────────────┐
+│     DDIValidationService        │
+│─────────────────────────────────│
+│ + expectedCurrency: string     │
+│ + expectedCountry: string      │
+│ + isTestMode: boolean          │
+│─────────────────────────────────│
+│ + validateEnrichedMessage()    │
+│ + performValidations()         │
+│ + validateCurrency()           │
+│ + validateCountry()            │
+│ + publishToKafka()            │
+└─────────────────────────────────┘
+         ┌───────┴───────┐
+         │               │
+         ▼               ▼
+┌─────────────────┐ ┌─────────────────┐
+│   KafkaClient   │ │   XMLParser     │
+│─────────────────│ │─────────────────│
+│ - producer      │ │                 │
+│─────────────────│ │─────────────────│
+│ + publish()     │ │ + parseXML()    │
+│ + connect()     │ │ + convertJSON() │
+│ + healthCheck() │ │ + extractFields()│
+└─────────────────┘ └─────────────────┘
 ```
 
 ---

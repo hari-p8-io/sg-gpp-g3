@@ -2,9 +2,10 @@
 
 ## Overview
 
-The **Fast Inward Processor Service** is the central orchestration hub of the Singapore G3 Payment Platform. It coordinates account lookup, reference data retrieval, and message enrichment for inward payment processing. This gRPC service serves as the primary integration point between multiple services and implements intelligent routing based on message types.
+The **Fast Inward Processor Service** is the central orchestration hub of the Singapore G3 Payment Platform. It receives payment requests directly and coordinates account lookup, reference data retrieval, and message enrichment for inward payment processing. This gRPC service serves as the primary integration point between multiple services and implements intelligent routing based on message types.
 
 ### Key Responsibilities
+- Receive payment requests directly from external systems
 - Orchestrate account lookup and reference data retrieval
 - Enrich PACS messages with account information and authentication methods
 - Implement intelligent routing (PACS.003 → Validation, PACS.008/007 → Direct Kafka)
@@ -22,95 +23,89 @@ The **Fast Inward Processor Service** is the central orchestration hub of the Si
 
 ## Sequence Diagram
 
-```mermaid
-sequenceDiagram
-    participant RH as fast-requesthandler-service
-    participant IWP as fast-inwd-processor-service
-    participant AL as fast-accountlookup-service
-    participant RD as fast-referencedata-service
-    participant VAL as fast-ddi-validation-service
-    participant KAFKA as Kafka Broker
-    
-    RH->>IWP: ProcessMessage(PACS.008)
-    Note over IWP: Extract CdtrAcct from XML
-    
-    IWP->>AL: LookupAccount(cdtrAcctId)
-    AL->>IWP: AccountLookupResponse(acctSys=VAM)
-    
-    IWP->>RD: LookupAuthMethod(acctSys, acctId)
-    RD->>IWP: AuthMethodResponse(authMethod=GROUPLIMIT)
-    
-    Note over IWP: Create enriched XML payload
-    Note over IWP: Determine routing (DIRECT_KAFKA)
-    
-    IWP->>KAFKA: Publish to enriched-messages topic
-    IWP->>RH: ProcessorResponse(success=true)
-    
-    Note over IWP: Alternative flow for PACS.003
-    RH->>IWP: ProcessMessage(PACS.003)
-    Note over IWP: Determine routing (VALIDATION_SERVICE)
-    IWP->>VAL: ValidateEnrichedMessage(enrichedPayload)
-    VAL->>IWP: ValidationResponse(success=true)
-    IWP->>RH: ProcessorResponse(success=true)
+```
+┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐
+│External     │  │InwdProcessor│  │AccountLookup│  │ReferenceData│  │DDIValidation│  │Kafka/Direct │
+│Client       │  │Service      │  │Service      │  │Service      │  │Service      │  │             │
+└─────────────┘  └─────────────┘  └─────────────┘  └─────────────┘  └─────────────┘  └─────────────┘
+       │                │                │                │                │                │
+       │ ProcessMsg()   │                │                │                │                │
+       │───────────────>│                │                │                │                │
+       │                │ LookupAccount()│                │                │                │
+       │                │───────────────>│                │                │                │
+       │                │ AccountData    │                │                │                │
+       │                │<───────────────│                │                │                │
+       │                │                │ LookupAuth()   │                │                │
+       │                │                │───────────────>│                │                │
+       │                │                │ AuthMethod     │                │                │
+       │                │                │<───────────────│                │                │
+       │                │                │                │                │                │
+       │                │ Route Decision (PACS.003 → Validation, PACS.008/007 → Direct)   │
+       │                │ ◄─┐            │                │                │                │
+       │                │   │ Enrich XML │                │                │                │
+       │                │ ◄─┘            │                │                │                │
+       │                │                │                │ Validate()     │                │
+       │                │                │                │───────────────>│   OR Direct    │
+       │                │                │                │                │   Publish      │
+       │                │                │                │                │──────────────> │
+       │ Response       │                │                │                │                │
+       │<───────────────│                │                │                │                │
 ```
 
 ---
 
 ## Class Diagram
 
-```mermaid
-classDiagram
-    class InwdProcessorService {
-        -accountLookupClient: AccountLookupClient
-        -referenceDataClient: ReferenceDataClient
-        -validationClient: ValidationClient
-        -kafkaClient: KafkaClient
-        -useMockMode: boolean
-        +enrichMessage(request): Promise<EnrichmentResponse>
-        +performEnrichment(request, cdtrAcct): Promise<EnrichmentResult>
-        +determineRouting(messageType): string
-        +routeToValidationService(request, payload, data): Promise<Response>
-        +routeToKafkaDirectly(request, payload, data): Promise<Response>
-        +createJSONPayload(request, payload, data): any
-        +createEnrichedXML(xmlPayload, enrichmentData): string
-        +getMarketConfig(metadata): MarketConfig
-    }
-
-    class InwdProcessorHandler {
-        -enrichmentService: InwdProcessorService
-        +enrichMessage(call, callback): void
-        +healthCheck(call, callback): void
-        +convertEnrichmentDataToGrpc(data): ProcessorData
-    }
-
-    class AccountLookupClient {
-        -client: grpc.Client
-        +lookupAccount(request): Promise<AccountLookupResponse>
-        +healthCheck(): Promise<HealthStatus>
-    }
-
-    class ReferenceDataClient {
-        +lookupAuthMethod(request): Promise<AuthMethodResponse>
-        +healthCheck(): Promise<HealthStatus>
-    }
-
-    class ValidationClient {
-        -client: grpc.Client
-        +validateEnrichedMessage(request): Promise<ValidationResponse>
-    }
-
-    class KafkaClient {
-        -producer: Producer
-        +publishEnrichedMessage(message): Promise<boolean>
-        +connect(): Promise<void>
-        +disconnect(): Promise<void>
-    }
-
-    InwdProcessorService --> AccountLookupClient
-    InwdProcessorService --> ReferenceDataClient
-    InwdProcessorService --> ValidationClient
-    InwdProcessorService --> KafkaClient
-    InwdProcessorHandler --> InwdProcessorService
+```
+┌─────────────────────────────────┐
+│    InwdProcessorHandler         │
+│─────────────────────────────────│
+│ - enrichmentService            │
+│─────────────────────────────────│
+│ + enrichMessage()              │
+│ + healthCheck()                │
+│ + convertToGrpc()              │
+└─────────────────────────────────┘
+                 │
+                 │ uses
+                 ▼
+┌─────────────────────────────────┐
+│    InwdProcessorService         │
+│─────────────────────────────────│
+│ - accountLookupClient          │
+│ - referenceDataClient          │
+│ - validationClient             │
+│ - kafkaClient                  │
+│ - useMockMode: boolean         │
+│─────────────────────────────────│
+│ + enrichMessage()              │
+│ + performEnrichment()          │
+│ + determineRouting()           │
+│ + routeToValidationService()   │
+│ + routeToKafkaDirectly()       │
+│ + createEnrichedXML()          │
+└─────────────────────────────────┘
+       │                     │
+       │                     │
+       ▼                     ▼
+┌─────────────────┐ ┌─────────────────┐
+│AccountLookupClnt│ │ReferenceDataClnt│
+│─────────────────│ │─────────────────│
+│ - client        │ │ - client        │
+│─────────────────│ │─────────────────│
+│ + lookupAccount()│ │ + lookupAuth()  │
+│ + healthCheck() │ │ + healthCheck() │
+└─────────────────┘ └─────────────────┘
+       │                     │
+       ▼                     ▼
+┌─────────────────┐ ┌─────────────────┐
+│ValidationClient │ │   KafkaClient   │
+│─────────────────│ │─────────────────│
+│ - client        │ │ - producer      │
+│─────────────────│ │─────────────────│
+│ + validate()    │ │ + publish()     │
+│ + healthCheck() │ │ + connect()     │
+└─────────────────┘ └─────────────────┘
 ```
 
 ---
@@ -441,104 +436,4 @@ interface MockAccountData {
 | **Reference Data Errors** | `REFDATA_ERROR` | Auth method lookup failed | Use default auth method |
 | **Validation Errors** | `VALIDATION_ERROR` | Validation service failed | Return error to client |
 | **Kafka Errors** | `KAFKA_ERROR` | Publishing failed | Retry publishing |
-| **XML Processing Errors** | `XML_ERROR` | Invalid XML structure | Return validation error |
-
----
-
-## Performance Characteristics
-
-### Service Performance Metrics
-- **Average Response Time**: 150-300ms (including downstream calls)
-- **Account Lookup Time**: ~110ms average
-- **Reference Data Time**: ~50ms average  
-- **XML Processing Time**: ~20ms average
-- **Kafka Publishing Time**: ~30ms average
-
-### Throughput Specifications
-- **Target Throughput**: 1000+ messages per second
-- **Concurrent Requests**: 100+ simultaneous
-- **Resource Usage**: 512MB-1GB memory, moderate CPU
-
-### SLA Requirements
-- **Availability**: 99.9% uptime
-- **Response Time**: 95th percentile < 500ms
-- **Error Rate**: < 0.1% for valid requests
-
----
-
-## Monitoring and Health Checks
-
-### Health Check Implementation
-
-```typescript
-async healthCheck(): Promise<HealthCheckResponse> {
-  const dependencies = await Promise.allSettled([
-    this.accountLookupClient.healthCheck(),
-    this.referenceDataClient.healthCheck(),
-    this.kafkaClient.healthCheck()
-  ]);
-  
-  const overallHealth = dependencies.every(d => d.status === 'fulfilled');
-  
-  return {
-    status: overallHealth ? 'SERVING' : 'NOT_SERVING',
-    message: overallHealth ? 'All dependencies healthy' : 'Some dependencies unhealthy',
-    timestamp: Date.now(),
-    dependencies: {
-      accountLookup: dependencies[0].status,
-      referenceData: dependencies[1].status, 
-      kafka: dependencies[2].status
-    }
-  };
-}
-```
-
-### Monitoring Metrics
-
-- **Message Processing Rates**: By message type and routing decision
-- **Downstream Service Latency**: Response times for each dependency
-- **Error Rates**: By error type and downstream service
-- **Enrichment Success Rates**: Successful vs failed enrichments
-- **Routing Distribution**: VALIDATION_SERVICE vs DIRECT_KAFKA percentages
-
----
-
-## Security Considerations
-
-### Data Security
-- No persistent sensitive data storage
-- Secure gRPC communication with downstream services  
-- Input validation and sanitization
-- XML parsing security (XXE protection)
-
-### Access Control
-- Service-to-service authentication via gRPC metadata
-- Network segmentation for internal services
-- Role-based access for monitoring and management
-
-### Data Privacy
-- Message data encrypted in transit
-- No logging of sensitive payment information
-- Compliance with PCI DSS requirements
-
----
-
-## Deployment and Scaling
-
-### Deployment Requirements
-- **Platform**: Kubernetes or container orchestration
-- **Resources**: 1-2 CPU cores, 1-2GB RAM per instance
-- **Network**: Access to all downstream services and Kafka
-- **Storage**: Minimal (stateless service)
-
-### Scaling Strategy
-- **Horizontal Scaling**: Multiple instances behind load balancer
-- **Auto-scaling**: Based on CPU usage and request latency
-- **Circuit Breakers**: Prevent cascade failures
-- **Bulkhead Pattern**: Isolate different message types
-
-### High Availability
-- **Multi-zone Deployment**: Distribute across availability zones
-- **Health Checks**: Kubernetes liveness and readiness probes
-- **Graceful Degradation**: Continue with mock data if services unavailable
-- **Disaster Recovery**: Rapid service restart and dependency reconnection 
+| **XML Processing Errors** | `XML_ERROR`
