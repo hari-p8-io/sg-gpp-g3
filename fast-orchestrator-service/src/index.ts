@@ -9,7 +9,10 @@ import axios from 'axios';
 // Configuration
 const PORT = process.env.PORT || 3004;
 const KAFKA_BROKERS = (process.env.KAFKA_BROKERS || 'localhost:9092').split(',');
-const KAFKA_TOPIC = process.env.KAFKA_TOPIC || 'validated-messages';
+
+// NEW: Dual topic configuration
+const VALIDATED_MESSAGES_TOPIC = process.env.VALIDATED_MESSAGES_TOPIC || 'validated-messages';
+const ENRICHED_MESSAGES_TOPIC = process.env.ENRICHED_MESSAGES_TOPIC || 'enriched-messages';
 const KAFKA_GROUP_ID = process.env.KAFKA_GROUP_ID || 'fast-orchestrator-group';
 
 // Market-configurable Kafka topics
@@ -35,9 +38,9 @@ app.use(helmet());
 app.use(cors());
 app.use(morgan('combined'));
 app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Request tracking middleware
+// Request ID middleware
 app.use((req: Request, res: Response, next: NextFunction) => {
   req.headers['x-request-id'] = req.headers['x-request-id'] || uuidv4();
   next();
@@ -54,7 +57,9 @@ const kafka = new Kafka({
   brokers: KAFKA_BROKERS,
 });
 
-const consumer = kafka.consumer({ groupId: KAFKA_GROUP_ID });
+// NEW: Separate consumers for each topic
+const validatedMessagesConsumer = kafka.consumer({ groupId: `${KAFKA_GROUP_ID}-validated` });
+const enrichedMessagesConsumer = kafka.consumer({ groupId: `${KAFKA_GROUP_ID}-enriched` });
 const vamResponseConsumer = kafka.consumer({ groupId: 'fast-orchestrator-vam-response-group' });
 const producer = kafka.producer();
 
@@ -90,45 +95,81 @@ async function initializeVAMResponseConsumer(): Promise<void> {
   console.log('📥 VAM response consumer initialized');
 }
 
-// Kafka consumer logic
-async function startKafkaConsumer(): Promise<void> {
-  await consumer.connect();
-  await consumer.subscribe({ topic: KAFKA_TOPIC, fromBeginning: false });
+// NEW: Initialize validated messages consumer (PACS.003 from validation service)
+async function initializeValidatedMessagesConsumer(): Promise<void> {
+  await validatedMessagesConsumer.connect();
+  await validatedMessagesConsumer.subscribe({ topic: VALIDATED_MESSAGES_TOPIC, fromBeginning: false });
 
-  await consumer.run({
+  await validatedMessagesConsumer.run({
     eachMessage: async ({ topic, partition, message }) => {
       try {
         const messageValue = message.value?.toString();
         if (!messageValue) return;
 
         const validatedMessage = JSON.parse(messageValue);
+        console.log(`📥 Received validated message (PACS.003): ${validatedMessage.messageId} from topic: ${topic}`);
         
-        console.log(`📥 Received validated message: ${validatedMessage.messageId}`);
+        // Add flow tracking
+        validatedMessage.flow = 'validation-service';
+        validatedMessage.originalTopic = topic;
         
-        // Process the validated message
-        await processValidatedMessage(validatedMessage);
+        // Process the validated message with unified logic
+        await processMessage(validatedMessage);
         
       } catch (error) {
-        console.error('Error processing Kafka message:', error);
+        console.error(`Error processing message from ${topic}:`, error);
       }
     },
   });
+  
+  console.log(`📥 Validated messages consumer initialized (topic: ${VALIDATED_MESSAGES_TOPIC})`);
 }
 
-// Process validated message from Kafka
-async function processValidatedMessage(validatedMessage: any): Promise<void> {
-  const { messageId, puid, jsonPayload, enrichmentData, validationResult } = validatedMessage;
+// NEW: Initialize enriched messages consumer (PACS.008 from enrichment service)
+async function initializeEnrichedMessagesConsumer(): Promise<void> {
+  await enrichedMessagesConsumer.connect();
+  await enrichedMessagesConsumer.subscribe({ topic: ENRICHED_MESSAGES_TOPIC, fromBeginning: false });
+
+  await enrichedMessagesConsumer.run({
+    eachMessage: async ({ topic, partition, message }) => {
+      try {
+        const messageValue = message.value?.toString();
+        if (!messageValue) return;
+
+        const enrichedMessage = JSON.parse(messageValue);
+        console.log(`📥 Received enriched message (PACS.008): ${enrichedMessage.messageId} from topic: ${topic}`);
+        
+        // Add flow tracking
+        enrichedMessage.flow = 'enrichment-service';
+        enrichedMessage.originalTopic = topic;
+        
+        // Process the enriched message with unified logic
+        await processMessage(enrichedMessage);
+        
+      } catch (error) {
+        console.error(`Error processing message from ${topic}:`, error);
+      }
+    },
+  });
+  
+  console.log(`📥 Enriched messages consumer initialized (topic: ${ENRICHED_MESSAGES_TOPIC})`);
+}
+
+// NEW: Unified message processing function (replaces processValidatedMessage)
+async function processMessage(incomingMessage: any): Promise<void> {
+  const { messageId, puid, flow, originalTopic } = incomingMessage;
   
   try {
+    // Normalize message structure based on flow
+    const normalizedMessage = normalizeMessageStructure(incomingMessage);
+    
     // Store the message
     processedMessages.set(messageId, {
-      messageId,
-      puid,
-      jsonPayload,
-      enrichmentData,
-      validationResult,
+      ...normalizedMessage,
       receivedAt: new Date().toISOString(),
-      status: 'received'
+      status: 'received',
+      flow: flow,
+      originalTopic: originalTopic
     });
 
     // Initialize orchestration status
@@ -138,11 +179,15 @@ async function processValidatedMessage(validatedMessage: any): Promise<void> {
       currentStep: 'orchestration_started',
       steps: [],
       startTime: Date.now(),
-      status: 'processing'
+      status: 'processing',
+      flow: flow,
+      originalTopic: originalTopic
     });
 
-    // Start orchestration process
-    await orchestrateMessage(messageId, validatedMessage);
+    console.log(`🔄 Processing message ${messageId} from ${flow} flow via topic ${originalTopic}`);
+
+    // Start orchestration process with normalized message
+    await orchestrateMessage(messageId, normalizedMessage);
 
   } catch (error) {
     console.error(`Error processing message ${messageId}:`, error);
@@ -153,8 +198,44 @@ async function processValidatedMessage(validatedMessage: any): Promise<void> {
       currentStep: 'error',
       error: error instanceof Error ? error.message : 'Unknown error',
       status: 'failed',
-      completedAt: new Date().toISOString()
+      completedAt: new Date().toISOString(),
+      flow: flow,
+      originalTopic: originalTopic
     });
+  }
+}
+
+/**
+ * NEW: Normalize message structure from different sources
+ */
+function normalizeMessageStructure(incomingMessage: any): any {
+  const { flow } = incomingMessage;
+  
+  if (flow === 'validation-service') {
+    // Message from validation service (PACS.003)
+    return {
+      messageId: incomingMessage.messageId,
+      puid: incomingMessage.puid,
+      messageType: incomingMessage.messageType || 'PACS.003',
+      jsonPayload: incomingMessage.jsonPayload,
+      enrichmentData: incomingMessage.enrichmentData,
+      validationResult: incomingMessage.validationResult,
+      flow: 'validation-service'
+    };
+  } else if (flow === 'enrichment-service') {
+    // Message from enrichment service (PACS.008)
+    return {
+      messageId: incomingMessage.messageId,
+      puid: incomingMessage.puid,
+      messageType: incomingMessage.messageType || 'PACS.008',
+      jsonPayload: incomingMessage.jsonPayload,
+      enrichmentData: incomingMessage.enrichmentData,
+      validationResult: { isValid: true }, // Assume valid since it came from enrichment
+      flow: 'enrichment-service'
+    };
+  } else {
+    // Default structure
+    return incomingMessage;
   }
 }
 
@@ -691,7 +772,7 @@ app.get('/health', (req: Request, res: Response): void => {
     environment: process.env.NODE_ENV || 'development',
     kafka: {
       connected: true,
-      topic: KAFKA_TOPIC,
+      topic: VALIDATED_MESSAGES_TOPIC, // Updated to reflect dual topic
       groupId: KAFKA_GROUP_ID,
       vamTopic: VAM_KAFKA_TOPIC,
       limitCheckTopic: LIMITCHECK_KAFKA_TOPIC, // **NEW: Include limit check topic in health**
@@ -776,8 +857,10 @@ async function startServices(): Promise<void> {
     // Initialize Kafka
     await initializeKafkaProducer();
     await initializeVAMResponseConsumer();
-    await startKafkaConsumer();
-    console.log('📥 Kafka consumer started (topic: validated-messages)');
+    await initializeValidatedMessagesConsumer(); // Initialize validated messages consumer
+    await initializeEnrichedMessagesConsumer(); // Initialize enriched messages consumer
+    console.log(`📥 Validated messages consumer started (topic: ${VALIDATED_MESSAGES_TOPIC})`);
+    console.log(`📥 Enriched messages consumer started (topic: ${ENRICHED_MESSAGES_TOPIC})`);
     console.log('🔍 Limit check routing enabled for GROUPLIMIT auth method'); // **NEW: Log limit check capability**
     
     // Start HTTP server
@@ -799,7 +882,8 @@ process.on('SIGINT', async () => {
   console.log('📤 Shutting down gracefully...');
   
   try {
-    await consumer.disconnect();
+    await validatedMessagesConsumer.disconnect();
+    await enrichedMessagesConsumer.disconnect();
     await vamResponseConsumer.disconnect();
     await producer.disconnect();
     console.log('📤 Kafka disconnected');
@@ -814,7 +898,8 @@ process.on('SIGTERM', async () => {
   console.log('📤 Shutting down gracefully...');
   
   try {
-    await consumer.disconnect();
+    await validatedMessagesConsumer.disconnect();
+    await enrichedMessagesConsumer.disconnect();
     await vamResponseConsumer.disconnect();
     await producer.disconnect();
     console.log('📤 Kafka disconnected');

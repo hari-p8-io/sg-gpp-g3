@@ -3,6 +3,7 @@ import { extractCdtrAcct, validateXML, isFinancialMessage } from '../utils/xmlPa
 import { AccountLookupClient, AccountLookupRequest } from '../grpc/clients/accountLookupClient';
 import { ReferenceDataClient } from '../grpc/clients/referenceDataClient';
 import { ValidationClient, ValidationRequest } from '../grpc/clients/validationClient';
+import { KafkaClient } from './kafkaClient'; // NEW: Add Kafka client
 import { logger } from '../utils/logger';
 import { config } from '../config/default';
 
@@ -24,23 +25,27 @@ export interface EnrichmentResponse {
   enrichmentData?: any;
   processedAt: number;
   nextService: string;
+  routingDecision?: string; // NEW: Track routing decision
+  kafkaPublished?: boolean; // NEW: Track Kafka publishing for PACS.008
 }
 
 export class EnrichmentService {
   private accountLookupClient: AccountLookupClient;
   private referenceDataClient: ReferenceDataClient;
   private validationClient: ValidationClient;
+  private kafkaClient: KafkaClient; // NEW: Kafka client for direct publishing
   private useMockMode: boolean;
 
-  // Private constructor to force use of factory method
-  private constructor(
+  constructor(
     accountLookupClient: AccountLookupClient,
     referenceDataClient: ReferenceDataClient,
-    validationClient: ValidationClient
+    validationClient: ValidationClient,
+    kafkaClient: KafkaClient // NEW: Inject Kafka client
   ) {
     this.accountLookupClient = accountLookupClient;
     this.referenceDataClient = referenceDataClient;
     this.validationClient = validationClient;
+    this.kafkaClient = kafkaClient; // NEW: Initialize Kafka client
     this.useMockMode = process.env.NODE_ENV === 'test' || process.env.USE_MOCK_MODE === 'true';
   }
 
@@ -57,8 +62,12 @@ export class EnrichmentService {
       // Initialize sync clients
       const referenceDataClient = new ReferenceDataClient();
       const validationClient = new ValidationClient('localhost:50053');
+      
+      // NEW: Initialize Kafka client
+      const kafkaClient = new KafkaClient();
+      await kafkaClient.connect();
 
-      return new EnrichmentService(accountLookupClient, referenceDataClient, validationClient);
+      return new EnrichmentService(accountLookupClient, referenceDataClient, validationClient, kafkaClient);
     } catch (error) {
       throw new Error(`Failed to initialize EnrichmentService: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
@@ -92,179 +101,32 @@ export class EnrichmentService {
         cdtrAcct
       });
 
-      let lookupResponse;
-
-      if (this.useMockMode) {
-        // Use mock data when in test mode or when account lookup service is not available
-        lookupResponse = this.createMockLookupResponse(request, cdtrAcct);
-        logger.debug('Using mock account lookup data', {
-          messageId: request.messageId,
-          cdtrAcct
-        });
-      } else {
-        // Try to call account lookup service
-        try {
-          const lookupRequest: AccountLookupRequest = {
-            messageId: request.messageId,
-            puid: request.puid,
-            cdtrAcctId: cdtrAcct,
-            messageType: request.messageType,
-            metadata: {
-              ...request.metadata,
-              extractedFrom: 'xml_payload',
-              enrichmentService: 'fast-enrichment-service'
-            },
-            timestamp: Date.now()
-          };
-
-          lookupResponse = await this.accountLookupClient.lookupAccount(lookupRequest);
-        } catch (error) {
-          logger.warn('Account lookup service unavailable, falling back to mock data', {
-            messageId: request.messageId,
-            error: error instanceof Error ? error.message : 'Unknown error'
-          });
-          
-          // Fallback to mock data if account lookup service is unavailable
-          lookupResponse = this.createMockLookupResponse(request, cdtrAcct);
-        }
+      // Perform account lookup and reference data enrichment
+      const enrichmentData = await this.performEnrichment(request, cdtrAcct);
+      if (!enrichmentData.success) {
+        return this.createErrorResponse(request, enrichmentData.errorMessage || 'Unknown error', enrichmentData.errorCode);
       }
-
-      if (!lookupResponse.success) {
-        return this.createErrorResponse(request, 
-          `Account lookup failed: ${lookupResponse.errorMessage}`,
-          lookupResponse.errorCode
-        );
-      }
-
-      logger.info('Account lookup completed successfully', {
-        messageId: request.messageId,
-        cdtrAcct,
-        lookupSource: lookupResponse.lookupSource
-      });
-
-      // Get market configuration from metadata or use defaults
-      const marketConfig = this.getMarketConfig(request.metadata);
-
-      // Call reference data service to get auth method
-      let authMethod: string = 'AFPONLY'; // default
-      try {
-        const referenceDataResponse = await this.referenceDataClient.lookupAuthMethod({
-          messageId: request.messageId,
-          puid: request.puid,
-          acctSys: lookupResponse.enrichmentData?.physicalAcctInfo?.acctSys || marketConfig.defaultAcctSys,
-          acctGrp: lookupResponse.enrichmentData?.physicalAcctInfo?.acctGroup || marketConfig.defaultAcctGroup,
-          acctId: cdtrAcct,
-          country: lookupResponse.enrichmentData?.physicalAcctInfo?.country || marketConfig.country,
-          currencyCode: lookupResponse.enrichmentData?.physicalAcctInfo?.currencyCode || marketConfig.defaultCurrency,
-          metadata: request.metadata || {},
-          timestamp: Date.now()
-        });
-
-        if (referenceDataResponse.success && referenceDataResponse.authMethod) {
-          authMethod = referenceDataResponse.authMethod;
-          logger.info('Reference data lookup completed', {
-            messageId: request.messageId,
-            authMethod
-          });
-        } else {
-          logger.warn('Reference data lookup failed, using default auth method', {
-            messageId: request.messageId,
-            error: referenceDataResponse.errorMessage
-          });
-        }
-      } catch (error) {
-        logger.warn('Reference data service unavailable, using account-based auth method', {
-          messageId: request.messageId,
-          error: error instanceof Error ? error.message : 'Unknown error'
-        });
-      }
-
-      // If reference data service failed, determine auth method based on account system and ID
-      if (authMethod === 'AFPONLY') {
-        const acctSys = lookupResponse.enrichmentData?.physicalAcctInfo?.acctSys;
-        
-        // VAM accounts typically use GROUPLIMIT authentication
-        if (acctSys === 'VAM' || cdtrAcct === '999888777666' || cdtrAcct.startsWith('999')) {
-          authMethod = 'GROUPLIMIT';
-          logger.info('Applied VAM account auth method', {
-            messageId: request.messageId,
-            cdtrAcct,
-            acctSys,
-            authMethod
-          });
-        } else if (acctSys === 'MEPS' || cdtrAcct.startsWith('888')) {
-          authMethod = 'AFPTHENLIMIT';
-          logger.info('Applied corporate account auth method', {
-            messageId: request.messageId,
-            cdtrAcct,
-            acctSys,
-            authMethod
-          });
-        }
-        // Default remains AFPONLY for MDZ and other systems
-      }
-
-      // Add auth method to enrichment data
-      lookupResponse.enrichmentData.authMethod = authMethod;
 
       // Create enriched XML payload
-      const enrichedPayload = this.createEnrichedXML(request.xmlPayload, lookupResponse.enrichmentData);
+      const enrichedPayload = this.createEnrichedXML(request.xmlPayload, enrichmentData.data);
 
-      logger.info('Enrichment completed, calling validation service', {
+      // NEW: Determine routing based on message type
+      const routingDecision = this.determineRouting(request.messageType);
+      
+      logger.info('Routing decision made', {
         messageId: request.messageId,
-        puid: request.puid,
-        authMethod
+        messageType: request.messageType,
+        routingDecision
       });
 
-      // Call validation service as per the flow specification
-      try {
-        const validationRequest: ValidationRequest = {
-          messageId: request.messageId,
-          puid: request.puid,
-          messageType: request.messageType,
-          enrichedXmlPayload: enrichedPayload,
-          enrichmentData: lookupResponse.enrichmentData,
-          timestamp: Date.now(),
-          metadata: request.metadata
-        };
-
-        const validationResponse = await this.validationClient.validateEnrichedMessage(validationRequest);
-
-        if (validationResponse.success) {
-          logger.info('Validation service call successful', {
-            messageId: request.messageId,
-            success: validationResponse.success,
-            kafkaPublished: validationResponse.kafkaPublished
-          });
-
-          return {
-            messageId: request.messageId,
-            puid: request.puid,
-            success: true,
-            enrichedPayload,
-            enrichmentData: lookupResponse.enrichmentData,
-            processedAt: Date.now(),
-            nextService: 'fast-orchestrator-service'
-          };
-        } else {
-          logger.error('Validation failed', {
-            messageId: request.messageId,
-            error: validationResponse.errorMessage
-          });
-
-          return this.createErrorResponse(request, 
-            `Validation failed: ${validationResponse.errorMessage}`
-          );
-        }
-      } catch (error) {
-        logger.error('Validation service call failed', {
-          messageId: request.messageId,
-          error: error instanceof Error ? error.message : 'Unknown error'
-        });
-
-        return this.createErrorResponse(request, 
-          `Validation service unavailable: ${error instanceof Error ? error.message : 'Unknown error'}`
-        );
+      if (routingDecision === 'VALIDATION_SERVICE') {
+        // PACS.003 - Route to validation service
+        return await this.routeToValidationService(request, enrichedPayload, enrichmentData.data);
+      } else if (routingDecision === 'DIRECT_KAFKA') {
+        // PACS.008 - Route directly to Kafka
+        return await this.routeToKafkaDirectly(request, enrichedPayload, enrichmentData.data);
+      } else {
+        return this.createErrorResponse(request, `Unknown routing decision: ${routingDecision}`);
       }
 
     } catch (error) {
@@ -557,6 +419,296 @@ export class EnrichmentService {
       case 'Utility': return 'UTILITY_SERVICES';
       default: return 'GENERAL_BANKING';
     }
+  }
+
+  /**
+   * NEW: Determine routing based on message type
+   */
+  private determineRouting(messageType: string): string {
+    switch (messageType.toUpperCase()) {
+      case 'PACS.003':
+      case 'PACS003':
+        return 'VALIDATION_SERVICE';
+      case 'PACS.008':
+      case 'PACS008':
+        return 'DIRECT_KAFKA';
+      default:
+        // Default routing - can be configured based on requirements
+        return 'VALIDATION_SERVICE';
+    }
+  }
+
+  /**
+   * NEW: Route PACS.003 messages to validation service
+   */
+  private async routeToValidationService(
+    request: EnrichmentRequest, 
+    enrichedPayload: string, 
+    enrichmentData: any
+  ): Promise<EnrichmentResponse> {
+    logger.info('Routing to validation service', {
+      messageId: request.messageId,
+      messageType: request.messageType
+    });
+
+    try {
+      const validationRequest: ValidationRequest = {
+        messageId: request.messageId,
+        puid: request.puid,
+        messageType: request.messageType,
+        enrichedXmlPayload: enrichedPayload,
+        enrichmentData: enrichmentData,
+        timestamp: Date.now(),
+        metadata: request.metadata
+      };
+
+      const validationResponse = await this.validationClient.validateEnrichedMessage(validationRequest);
+
+      if (validationResponse.success) {
+        logger.info('Validation service call successful', {
+          messageId: request.messageId,
+          success: validationResponse.success,
+          kafkaPublished: validationResponse.kafkaPublished
+        });
+
+        return {
+          messageId: request.messageId,
+          puid: request.puid,
+          success: true,
+          enrichedPayload,
+          enrichmentData: enrichmentData,
+          processedAt: Date.now(),
+          nextService: 'fast-orchestrator-service',
+          routingDecision: 'VALIDATION_SERVICE'
+        };
+      } else {
+        logger.error('Validation failed', {
+          messageId: request.messageId,
+          error: validationResponse.errorMessage
+        });
+
+        return this.createErrorResponse(request, 
+          `Validation failed: ${validationResponse.errorMessage}`
+        );
+      }
+    } catch (error) {
+      logger.error('Validation service call failed', {
+        messageId: request.messageId,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+
+      return this.createErrorResponse(request, 
+        `Validation service unavailable: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+    }
+  }
+
+  /**
+   * NEW: Route PACS.008 messages directly to Kafka
+   */
+  private async routeToKafkaDirectly(
+    request: EnrichmentRequest, 
+    enrichedPayload: string, 
+    enrichmentData: any
+  ): Promise<EnrichmentResponse> {
+    logger.info('Routing directly to Kafka', {
+      messageId: request.messageId,
+      messageType: request.messageType
+    });
+
+    try {
+      // Create JSON payload for Kafka
+      const jsonPayload = this.createJSONPayload(request, enrichedPayload, enrichmentData);
+
+      // Publish directly to Kafka
+      const kafkaPublished = await this.kafkaClient.publishEnrichedMessage({
+        messageId: request.messageId,
+        puid: request.puid,
+        messageType: request.messageType,
+        jsonPayload: jsonPayload,
+        enrichmentData: enrichmentData,
+        timestamp: request.timestamp,
+        sourceService: 'fast-enrichment-service'
+      });
+
+      if (kafkaPublished) {
+        logger.info('Message published to Kafka successfully', {
+          messageId: request.messageId,
+          messageType: request.messageType,
+          topic: 'enriched-messages'
+        });
+
+        return {
+          messageId: request.messageId,
+          puid: request.puid,
+          success: true,
+          enrichedPayload,
+          enrichmentData: enrichmentData,
+          processedAt: Date.now(),
+          nextService: 'fast-orchestrator-service',
+          routingDecision: 'DIRECT_KAFKA',
+          kafkaPublished: true
+        };
+      } else {
+        return this.createErrorResponse(request, 'Failed to publish message to Kafka');
+      }
+    } catch (error) {
+      logger.error('Kafka publishing failed', {
+        messageId: request.messageId,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+
+      return this.createErrorResponse(request, 
+        `Kafka publishing failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+    }
+  }
+
+  /**
+   * NEW: Create JSON payload for Kafka publishing
+   */
+  private createJSONPayload(request: EnrichmentRequest, enrichedPayload: string, enrichmentData: any): any {
+    return {
+      messageId: request.messageId,
+      puid: request.puid,
+      messageType: request.messageType,
+      enrichedXmlPayload: enrichedPayload,
+      enrichmentData: enrichmentData,
+      extractedFields: {
+        cdtrAcct: enrichmentData.receivedAcctId,
+        amount: enrichmentData.messageData?.amount,
+        currency: enrichmentData.messageData?.currency || 'SGD',
+        country: enrichmentData.physicalAcctInfo?.country || 'SG'
+      },
+      processedAt: new Date().toISOString(),
+      sourceService: 'fast-enrichment-service'
+    };
+  }
+
+  /**
+   * Perform account lookup and reference data enrichment
+   */
+  private async performEnrichment(request: EnrichmentRequest, cdtrAcct: string): Promise<{success: boolean, data?: any, errorMessage?: string, errorCode?: string}> {
+    let lookupResponse;
+
+    if (this.useMockMode) {
+      // Use mock data when in test mode or when account lookup service is not available
+      lookupResponse = this.createMockLookupResponse(request, cdtrAcct);
+      logger.debug('Using mock account lookup data', {
+        messageId: request.messageId,
+        cdtrAcct
+      });
+    } else {
+      // Try to call account lookup service
+      try {
+        const lookupRequest: AccountLookupRequest = {
+          messageId: request.messageId,
+          puid: request.puid,
+          cdtrAcctId: cdtrAcct,
+          messageType: request.messageType,
+          metadata: {
+            ...request.metadata,
+            extractedFrom: 'xml_payload',
+            enrichmentService: 'fast-enrichment-service'
+          },
+          timestamp: Date.now()
+        };
+
+        lookupResponse = await this.accountLookupClient.lookupAccount(lookupRequest);
+      } catch (error) {
+        logger.warn('Account lookup service unavailable, falling back to mock data', {
+          messageId: request.messageId,
+          error: error instanceof Error ? error.message : 'Unknown error'
+        });
+        
+        // Fallback to mock data if account lookup service is unavailable
+        lookupResponse = this.createMockLookupResponse(request, cdtrAcct);
+      }
+    }
+
+    if (!lookupResponse.success) {
+      return {
+        success: false,
+        errorMessage: `Account lookup failed: ${lookupResponse.errorMessage}`,
+        errorCode: lookupResponse.errorCode
+      };
+    }
+
+    logger.info('Account lookup completed successfully', {
+      messageId: request.messageId,
+      cdtrAcct,
+      lookupSource: lookupResponse.lookupSource
+    });
+
+    // Get market configuration from metadata or use defaults
+    const marketConfig = this.getMarketConfig(request.metadata);
+
+    // Call reference data service to get auth method
+    let authMethod: string = 'AFPONLY'; // default
+    try {
+      const referenceDataResponse = await this.referenceDataClient.lookupAuthMethod({
+        messageId: request.messageId,
+        puid: request.puid,
+        acctSys: lookupResponse.enrichmentData?.physicalAcctInfo?.acctSys || marketConfig.defaultAcctSys,
+        acctGrp: lookupResponse.enrichmentData?.physicalAcctInfo?.acctGroup || marketConfig.defaultAcctGroup,
+        acctId: cdtrAcct,
+        country: lookupResponse.enrichmentData?.physicalAcctInfo?.country || marketConfig.country,
+        currencyCode: lookupResponse.enrichmentData?.physicalAcctInfo?.currencyCode || marketConfig.defaultCurrency,
+        metadata: request.metadata || {},
+        timestamp: Date.now()
+      });
+
+      if (referenceDataResponse.success && referenceDataResponse.authMethod) {
+        authMethod = referenceDataResponse.authMethod;
+        logger.info('Reference data lookup completed', {
+          messageId: request.messageId,
+          authMethod
+        });
+      } else {
+        logger.warn('Reference data lookup failed, using default auth method', {
+          messageId: request.messageId,
+          error: referenceDataResponse.errorMessage
+        });
+      }
+    } catch (error) {
+      logger.warn('Reference data service unavailable, using account-based auth method', {
+        messageId: request.messageId,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+
+    // If reference data service failed, determine auth method based on account system and ID
+    if (authMethod === 'AFPONLY') {
+      const acctSys = lookupResponse.enrichmentData?.physicalAcctInfo?.acctSys;
+      
+      // VAM accounts typically use GROUPLIMIT authentication
+      if (acctSys === 'VAM' || cdtrAcct === '999888777666' || cdtrAcct.startsWith('999')) {
+        authMethod = 'GROUPLIMIT';
+        logger.info('Applied VAM account auth method', {
+          messageId: request.messageId,
+          cdtrAcct,
+          acctSys,
+          authMethod
+        });
+      } else if (acctSys === 'MEPS' || cdtrAcct.startsWith('888')) {
+        authMethod = 'AFPTHENLIMIT';
+        logger.info('Applied corporate account auth method', {
+          messageId: request.messageId,
+          cdtrAcct,
+          acctSys,
+          authMethod
+        });
+      }
+      // Default remains AFPONLY for MDZ and other systems
+    }
+
+    // Add auth method to enrichment data
+    lookupResponse.enrichmentData.authMethod = authMethod;
+
+    return {
+      success: true,
+      data: lookupResponse.enrichmentData
+    };
   }
 
   /**

@@ -1,11 +1,11 @@
-// Use shared logger package instead of local implementation
-import { getLogger } from '@gpp/logger';
+// Use fast-core shared logger instead of separate logger package
+import { getLogger, Logger, LogData } from '@gpp/fast-core';
 
 // Export the shared logger configured for this service
 export const logger = getLogger('fast-enrichment-service');
 
 // Re-export types for backward compatibility
-export type { LogData } from '@gpp/logger';
+export type { LogData };
 
 // Re-export Logger class for backward compatibility
-export { Logger } from '@gpp/logger'; 
+export { Logger }; 
