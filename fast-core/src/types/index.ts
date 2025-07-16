@@ -96,6 +96,7 @@ export interface ProcessingResult {
 // Event types for Kafka messages
 export enum MessageType {
   PACS008 = 'pacs.008.001.08',
+  PACS007 = 'pacs.007.001.08',
   PACS003 = 'pacs.003.001.08',
   PACS002 = 'pacs.002.001.10'
 }

@@ -431,6 +431,8 @@ export class EnrichmentService {
         return 'VALIDATION_SERVICE';
       case 'PACS.008':
       case 'PACS008':
+      case 'PACS.007':
+      case 'PACS007':
         return 'DIRECT_KAFKA';
       default:
         // Default routing - can be configured based on requirements

@@ -15,7 +15,7 @@ Client → Request Handler (50051) → Enrichment (50052) → Validation (50053)
 ```
 Client → Enrichment Service (50052) [Entry Point]
     ├── PACS.003 → Validation (50053) → Kafka (validated-messages) → Orchestrator (3004)
-    └── PACS.008 → Kafka (enriched-messages) → Orchestrator (3004)
+    └── PACS.008/PACS.007 → Kafka (enriched-messages) → Orchestrator (3004)
 ```
 
 ## 🚀 **Key Improvements**
@@ -119,7 +119,7 @@ function normalizeMessageStructure(incomingMessage: any): any
 6. Unified orchestration logic
 ```
 
-### **PACS.008 Flow (Direct Route)**
+### **PACS.008/PACS.007 Flow (Direct Route)**
 ```
 1. Client → Enrichment Service (50052)
 2. Enrichment → Account Lookup (50059) + Reference Data (50060)
@@ -133,7 +133,7 @@ function normalizeMessageStructure(incomingMessage: any): any
 | Topic | Source | Consumer | Message Type | Purpose |
 |-------|--------|----------|--------------|---------|
 | `validated-messages` | Validation Service | Orchestrator | PACS.003 | Validated messages after XSD validation |
-| `enriched-messages` | Enrichment Service | Orchestrator | PACS.008 | Enriched messages bypassing validation |
+| `enriched-messages` | Enrichment Service | Orchestrator | PACS.008/PACS.007 | Enriched messages bypassing validation |
 | `accounting-messages` | Orchestrator | Accounting Service | Both | Transaction processing |
 | `limitcheck-messages` | Orchestrator | Limit Check Service | Both | Limit validation (GROUPLIMIT) |
 

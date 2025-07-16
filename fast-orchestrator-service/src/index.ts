@@ -623,7 +623,7 @@ function determineRoute(validatedMessage: any): string {
   }
   
   // Default routing based on message type and market
-  if (messageType === 'PACS008' || messageType === 'CAMT053') {
+  if (messageType === 'PACS008' || messageType === 'PACS007' || messageType === 'CAMT053') {
     return marketConfig.standardFlow;
   }
   

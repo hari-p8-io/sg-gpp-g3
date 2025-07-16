@@ -170,7 +170,7 @@ cd utilities
 3. Reference Data (50060) ← Gets authentication method
 4. Conditional Routing:
    - PACS.003 → Validation (50053) → Kafka (validated-messages) → Orchestrator (3004)
-   - PACS.008 → Kafka (enriched-messages) → Orchestrator (3004)
+   - PACS.008/PACS.007 → Kafka (enriched-messages) → Orchestrator (3004)
 5. Unified Orchestration → Accounting (8002) + Limit Check (3006) + VAM/MDZ Mediation
 ```
 
@@ -181,7 +181,7 @@ cd utilities
 
 ### **Kafka Topic Strategy**
 - **`validated-messages`**: PACS.003 messages after validation
-- **`enriched-messages`**: PACS.008 messages directly from enrichment
+- **`enriched-messages`**: PACS.008/PACS.007 messages directly from enrichment
 - **`accounting-messages`**: Messages for accounting processing
 - **`limitcheck-messages`**: Messages for limit checking (GROUPLIMIT only)
 
@@ -213,7 +213,7 @@ sequenceDiagram
 
     Note over Client,MDZ: Revised Architecture - Direct Enrichment Entry
 
-    Client->>+ES: 1. Direct Message (gRPC)<br/>PACS.008 or PACS.003
+    Client->>+ES: 1. Direct Message (gRPC)<br/>PACS.008, PACS.007, or PACS.003
     
     Note over ES,RD: Enrichment Phase (Common)
     ES->>+AL: 2. LookupAccount(accountNumber)
@@ -280,11 +280,11 @@ sequenceDiagram
 1. **🎯 Direct Entry Phase** (Steps 1-5)
    - Client sends messages directly to Enrichment Service (no request handler)
    - Enrichment Service handles account lookup and reference data retrieval
-   - Same enrichment logic for both PACS.003 and PACS.008
+   - Same enrichment logic for PACS.003, PACS.008, and PACS.007
 
 2. **🚦 Conditional Routing Phase** (Steps 6-11)
    - **PACS.003**: Enrichment → Validation → Kafka (`validated-messages`) → Orchestrator
-   - **PACS.008**: Enrichment → Kafka (`enriched-messages`) → Orchestrator
+   - **PACS.008/PACS.007**: Enrichment → Kafka (`enriched-messages`) → Orchestrator
    - Client receives immediate response after routing decision
 
 3. **⚡ Unified Orchestration Phase** (Steps 12-17)
