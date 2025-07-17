@@ -2,12 +2,13 @@
 
 ## Overview
 
-The **Fast Orchestrator Service** is an HTTP Express.js service combined with Kafka consumer/producer capabilities that handles message routing and orchestration in the Singapore G3 Payment Platform. It consumes validated and enriched messages from Kafka topics and routes them based on account systems and authentication methods.
+The **Fast Orchestrator Service** is an HTTP Express.js service combined with Kafka consumer/producer capabilities that handles message routing and orchestration in the Singapore G3 Payment Platform. It consumes validated and enriched messages from Kafka topics, routes them based on account systems and authentication methods, and also handles PACS.002 response messages from the fast-inwd-processor-service.
 
 ### Key Responsibilities
-- Consume messages from Kafka topics (validated-messages, enriched-messages)
+- Consume messages from Kafka topics (validated-messages, enriched-messages, pacs-response-messages)
 - Route messages based on account system (VAM/MDZ) and authentication method
 - Integrate with downstream systems (VAM mediation, limit checks)
+- **Process PACS.002 response messages** and forward to external systems
 - Maintain orchestration audit trail in Cloud Spanner
 - Provide HTTP APIs for monitoring and management
 - Handle message transformation and delivery
@@ -16,41 +17,53 @@ The **Fast Orchestrator Service** is an HTTP Express.js service combined with Ka
 - **Service Type**: HTTP Service + Kafka Consumer/Producer
 - **Port**: 3004 (HTTP), Kafka Consumer
 - **Technology Stack**: TypeScript, Express.js, Kafka, Cloud Spanner
-- **Role**: Message routing and orchestration hub
+- **Role**: Message routing, orchestration hub, and PACS.002 response handler
 
 ---
 
 ## Sequence Diagram
 
 ```
-┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐
-│Kafka Topics │  │Orchestrator │  │Cloud Spanner│  │VAM/Mediation│  │Limit Check  │
-│(Consumers)  │  │Service      │  │Database     │  │Services     │  │Services     │
-└─────────────┘  └─────────────┘  └─────────────┘  └─────────────┘  └─────────────┘
-       │                │                │                │                │
-       │ Validated Msg  │                │                │                │
-       │───────────────>│                │                │                │
-       │                │ Store Process  │                │                │
-       │                │───────────────>│                │                │
-       │                │ Audit Record   │                │                │
-       │                │                │                │                │
-       │                │ Route Decision │                │                │
-       │                │ ◄─┐            │                │                │
-       │                │   │ Check Auth │                │                │
-       │                │   │ Method     │                │                │
-       │                │ ◄─┘            │                │                │
-       │                │                │                │                │
-       │                │ Send to VAM    │                │                │
-       │                │───────────────────────────────>│                │
-       │                │                │                │ VAM Response   │
-       │                │◄───────────────────────────────│                │
-       │                │                │                │                │
-       │ Enriched Msg   │ Send to Limits │                │                │
-       │───────────────>│───────────────────────────────────────────────>│
-       │                │                │                │ Limit Response │
-       │                │◄───────────────────────────────────────────────│
-       │                │ Update Status  │                │                │
-       │                │───────────────>│                │                │
+┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐
+│Kafka Topics │  │Orchestrator │  │Cloud Spanner│  │VAM/Mediation│  │External     │  │PACS Response│
+│(Consumers)  │  │Service      │  │Database     │  │Services     │  │Systems      │  │Messages     │
+└─────────────┘  └─────────────┘  └─────────────┘  └─────────────┘  └─────────────┘  └─────────────┘
+       │                │                │                │                │                │
+       │ Validated Msg  │                │                │                │                │
+       │───────────────>│                │                │                │                │
+       │                │ Store Process  │                │                │                │
+       │                │───────────────>│                │                │                │
+       │                │ Audit Record   │                │                │                │
+       │                │                │                │                │                │
+       │                │ Route Decision │                │                │                │
+       │                │ ◄─┐            │                │                │                │
+       │                │   │ Check Auth │                │                │                │
+       │                │   │ Method     │                │                │                │
+       │                │ ◄─┘            │                │                │                │
+       │                │                │                │                │                │
+       │                │ Send to VAM    │                │                │                │
+       │                │───────────────────────────────>│                │                │
+       │                │                │                │ VAM Response   │                │
+       │                │◄───────────────────────────────│                │                │
+       │                │                │                │                │                │
+       │ Enriched Msg   │ Send to Limits │                │                │                │
+       │───────────────>│───────────────────────────────────────────────>│                │
+       │                │                │                │ Limit Response │                │
+       │                │◄───────────────────────────────────────────────│                │
+       │                │ Update Status  │                │                │                │
+       │                │───────────────>│                │                │                │
+       │                │                │                │                │                │
+       │ PACS.002 Resp  │ Process Response Message        │                │                │
+       │───────────────>│ ◄─┐            │                │                │                │
+       │                │   │ Extract    │                │                │                │
+       │                │   │ Response   │                │                │                │
+       │                │ ◄─┘ Details    │                │                │                │
+       │                │                │                │                │                │
+       │                │ Forward PACS.002 Response       │                │                │
+       │                │─────────────────────────────────────────────────>│                │
+       │                │                │                │                │                │
+       │                │ Update Response Status          │                │                │
+       │                │───────────────>│                │                │                │
 ```
 
 ---
@@ -80,102 +93,115 @@ The **Fast Orchestrator Service** is an HTTP Express.js service combined with Ka
 │ - spannerClient                │
 │ - vatMediationClient           │
 │ - limitCheckClient             │
+│ - externalSystemClient         │
 │─────────────────────────────────│
 │ + processValidatedMessage()    │
 │ + processEnrichedMessage()     │
+│ + processPacs002Response()     │
 │ + routeMessage()               │
+│ + forwardResponseToExternal()  │
 │ + storeAuditRecord()           │
 │ + updateProcessingStatus()     │
 └─────────────────────────────────┘
-       │              │              │
-       │              │              │
-       ▼              ▼              ▼
-┌─────────────┐ ┌─────────────┐ ┌─────────────┐
-│KafkaConsumer│ │SpannerClient│ │VamMediation │
-│─────────────│ │─────────────│ │Client       │
-│ - topics[]  │ │ - database  │ │─────────────│
-│─────────────│ │─────────────│ │ - endpoint  │
-│ + consume() │ │ + insert()  │ │─────────────│
-│ + commit()  │ │ + update()  │ │ + sendVam() │
-│ + close()   │ │ + query()   │ │ + checkLimits()
-└─────────────┘ └─────────────┘ └─────────────┘
+       │              │              │              │
+       │              │              │              │
+       ▼              ▼              ▼              ▼
+┌─────────────┐ ┌─────────────┐ ┌─────────────┐ ┌─────────────┐
+│KafkaConsumer│ │SpannerClient│ │VamMediation │ │ExternalSys  │
+│─────────────│ │─────────────│ │Client       │ │Client       │
+│ - topics[]  │ │ - database  │ │─────────────│ │─────────────│
+│─────────────│ │─────────────│ │ - endpoint  │ │ - endpoints │
+│ + consume() │ │ + insert()  │ │─────────────│ │─────────────│
+│ + commit()  │ │ + update()  │ │ + sendVam() │ │ + sendPacs002()
+│ + close()   │ │ + query()   │ │ + checkLimits()│ + sendStatus()
+└─────────────┘ └─────────────┘ └─────────────┘ └─────────────┘
 ```
 
 ---
 
-## Message Routing Logic
+## Enhanced Message Routing Logic
 
-### Routing Decision Table
+### Routing Decision Table (Updated)
 
-| Message Source | Auth Method | Account System | Routing Destination |
-|---------------|-------------|----------------|-------------------|
-| validated-messages | GROUPLIMIT | VAM | VAM Mediation + Limit Check |
-| validated-messages | GROUPLIMIT | MDZ | Limit Check Only |
-| validated-messages | AFPTHENLIMIT | VAM/MDZ | Authentication First + Limits |
-| validated-messages | AFPONLY | VAM/MDZ | Direct Processing |
-| enriched-messages | GROUPLIMIT | VAM | VAM Mediation + Limit Check |
-| enriched-messages | GROUPLIMIT | MDZ | Limit Check Only |
-| enriched-messages | AFPTHENLIMIT | VAM/MDZ | Authentication First + Limits |
-| enriched-messages | AFPONLY | VAM/MDZ | Direct Processing |
+| Message Source | Auth Method | Account System | Routing Destination | PACS.002 Handling |
+|---------------|-------------|----------------|--------------------|--------------------|
+| validated-messages | GROUPLIMIT | VAM | VAM Mediation + Limit Check | Processed separately |
+| validated-messages | GROUPLIMIT | MDZ | Limit Check Only | Processed separately |
+| validated-messages | AFPTHENLIMIT | VAM/MDZ | Authentication First + Limits | Processed separately |
+| validated-messages | AFPONLY | VAM/MDZ | Direct Processing | Processed separately |
+| enriched-messages | GROUPLIMIT | VAM | VAM Mediation + Limit Check | Processed separately |
+| enriched-messages | GROUPLIMIT | MDZ | Limit Check Only | Processed separately |
+| enriched-messages | AFPTHENLIMIT | VAM/MDZ | Authentication First + Limits | Processed separately |
+| enriched-messages | AFPONLY | VAM/MDZ | Direct Processing | Processed separately |
+| **pacs-response-messages** | **N/A** | **N/A** | **External Systems** | **Forward to Requestor** |
 
-### Routing Implementation
+### PACS.002 Response Processing
 
 ```typescript
-async routeMessage(message: ProcessedMessage): Promise<RoutingResult> {
-  const { authMethod, accountSystem, messageType } = message.enrichmentData;
+async processPacs002Response(responseMessage: PACS002Message): Promise<void> {
+  const { messageId, puid, status, originalMessageType, xmlPayload } = responseMessage;
   
-  switch (authMethod) {
-    case 'GROUPLIMIT':
-      if (accountSystem === 'VAM') {
-        return await this.routeToVamWithLimits(message);
-      } else {
-        return await this.routeToLimitsOnly(message);
-      }
+  // Log response receipt
+  logger.info('PACS.002 response received', {
+    messageId,
+    puid,
+    status,
+    originalMessageType
+  });
+  
+  // Store response audit trail
+  await this.storeResponseAuditRecord(responseMessage);
+  
+  // Determine external system endpoint based on original message routing
+  const externalEndpoint = await this.getOriginalRequestorEndpoint(puid);
+  
+  if (externalEndpoint) {
+    // Forward PACS.002 to original requestor
+    await this.forwardResponseToExternal(responseMessage, externalEndpoint);
     
-    case 'AFPTHENLIMIT':
-      return await this.routeToAuthenticationFirst(message);
-    
-    case 'AFPONLY':
-      return await this.routeToDirectProcessing(message);
-    
-    default:
-      throw new Error(`Unknown auth method: ${authMethod}`);
+    // Update response status
+    await this.updateResponseStatus(messageId, 'DELIVERED');
+  } else {
+    logger.error('No external endpoint found for PACS.002 response', { messageId, puid });
+    await this.updateResponseStatus(messageId, 'DELIVERY_FAILED');
   }
 }
 ```
 
 ---
 
-## HTTP API Endpoints
+## Kafka Configuration (Updated)
 
-### Health and Monitoring
+### Consumer Configuration
 
-| Endpoint | Method | Description | Response |
-|----------|--------|-------------|----------|
-| `/health` | GET | Service health check | Health status |
-| `/metrics` | GET | Processing metrics | Metrics data |
-| `/status` | GET | Service status | Current status |
+```javascript
+const consumerConfig = {
+  groupId: 'fast-orchestrator-group',
+  topics: [
+    'validated-messages', 
+    'enriched-messages',
+    'pacs-response-messages'  // NEW: PACS.002 response messages
+  ],
+  autoCommit: false,
+  maxBytesPerPartition: 1048576,
+  sessionTimeout: 30000,
+  heartbeatInterval: 3000
+};
+```
 
-### Message Processing
+### Topic Subscriptions (Updated)
 
-| Endpoint | Method | Description | Request Body |
-|----------|--------|-------------|--------------|
-| `/process/manual` | POST | Manual message processing | Message payload |
-| `/replay/{messageId}` | POST | Replay failed message | Message ID |
-
-### Monitoring and Management
-
-| Endpoint | Method | Description | Response |
-|----------|--------|-------------|----------|
-| `/queue/status` | GET | Kafka queue status | Queue metrics |
-| `/processing/stats` | GET | Processing statistics | Stats data |
-| `/audit/{messageId}` | GET | Message audit trail | Audit records |
+| Topic | Message Source | Processing Flow | Purpose |
+|-------|---------------|-----------------|---------|
+| `validated-messages` | fast-ddi-validation-service | PACS.003 messages | Payment processing |
+| `enriched-messages` | fast-inwd-processor-service | PACS.008/007 direct | Payment processing |
+| `pacs-response-messages` | fast-inwd-processor-service | PACS.002 responses | Response delivery |
 
 ---
 
-## Database Schema (Cloud Spanner)
+## Database Schema Updates (Cloud Spanner)
 
-### ProcessingSteps Table
+### Enhanced ProcessingSteps Table
 
 ```sql
 CREATE TABLE ProcessingSteps (
@@ -190,61 +216,38 @@ CREATE TABLE ProcessingSteps (
   StepDetails JSON,
   ErrorMessage STRING(1000),
   RetryCount INT64 DEFAULT 0,
+  ResponseStatus STRING(20),        -- NEW: PACS.002 response status
+  ResponseDeliveredAt TIMESTAMP,    -- NEW: Response delivery timestamp
   CreatedAt TIMESTAMP NOT NULL OPTIONS (allow_commit_timestamp=true),
   UpdatedAt TIMESTAMP NOT NULL OPTIONS (allow_commit_timestamp=true),
 ) PRIMARY KEY (MessageId, ProcessingStep, StepStartTime);
 ```
 
-### OrchestrationAudit Table
+### New PACS002ResponseAudit Table
 
 ```sql
-CREATE TABLE OrchestrationAudit (
-  MessageId STRING(50) NOT NULL,
+CREATE TABLE PACS002ResponseAudit (
+  ResponseMessageId STRING(50) NOT NULL,
+  OriginalMessageId STRING(50) NOT NULL,
   Puid STRING(50) NOT NULL,
-  MessageType STRING(20) NOT NULL,
-  SourceTopic STRING(50) NOT NULL,
-  AuthMethod STRING(20) NOT NULL,
-  AccountSystem STRING(10) NOT NULL,
-  RoutingDecision STRING(50) NOT NULL,
-  ProcessingStatus STRING(20) NOT NULL,
-  ProcessingStartTime TIMESTAMP NOT NULL,
-  ProcessingEndTime TIMESTAMP,
-  TotalDuration INT64,
-  EnrichmentData JSON,
-  ProcessingDetails JSON,
-  ErrorDetails JSON,
+  OriginalMessageType STRING(20) NOT NULL,
+  ResponseStatus STRING(10) NOT NULL,
+  ResponseXmlPayload STRING(MAX),
+  ExternalEndpoint STRING(200),
+  DeliveryStatus STRING(20) NOT NULL,
+  DeliveryAttempts INT64 DEFAULT 0,
+  ProcessingTimeMs INT64,
+  ReceivedAt TIMESTAMP NOT NULL,
+  DeliveredAt TIMESTAMP,
+  ErrorMessage STRING(1000),
   CreatedAt TIMESTAMP NOT NULL OPTIONS (allow_commit_timestamp=true),
   UpdatedAt TIMESTAMP NOT NULL OPTIONS (allow_commit_timestamp=true),
-) PRIMARY KEY (MessageId, ProcessingStartTime);
+) PRIMARY KEY (ResponseMessageId, ReceivedAt);
 ```
 
 ---
 
-## Kafka Configuration
-
-### Consumer Configuration
-
-```javascript
-const consumerConfig = {
-  groupId: 'fast-orchestrator-group',
-  topics: ['validated-messages', 'enriched-messages'],
-  autoCommit: false,
-  maxBytesPerPartition: 1048576,
-  sessionTimeout: 30000,
-  heartbeatInterval: 3000
-};
-```
-
-### Topic Subscriptions
-
-| Topic | Message Source | Processing Flow |
-|-------|---------------|-----------------|
-| `validated-messages` | fast-ddi-validation-service | PACS.003 messages |
-| `enriched-messages` | fast-inwd-processor-service | PACS.008/007 direct |
-
----
-
-## Environment Variables
+## Environment Variables (Updated)
 
 ```bash
 # HTTP Server
@@ -256,6 +259,7 @@ KAFKA_BROKERS=localhost:9092
 KAFKA_GROUP_ID=fast-orchestrator-group
 KAFKA_TOPIC_VALIDATED=validated-messages
 KAFKA_TOPIC_ENRICHED=enriched-messages
+KAFKA_TOPIC_PACS_RESPONSES=pacs-response-messages  # NEW
 
 # Cloud Spanner
 SPANNER_PROJECT_ID=gpp-g3-project
@@ -267,6 +271,11 @@ VAM_MEDIATION_ENDPOINT=https://vam-mediation.internal
 LIMIT_CHECK_ENDPOINT=https://limit-check.internal
 AUTHENTICATION_ENDPOINT=https://auth.internal
 
+# External Systems (NEW)
+EXTERNAL_SYSTEM_ENDPOINTS=https://bank-a.external,https://bank-b.external
+RESPONSE_DELIVERY_TIMEOUT_MS=10000
+RESPONSE_RETRY_ATTEMPTS=3
+
 # Processing Settings
 MAX_RETRY_ATTEMPTS=3
 PROCESSING_TIMEOUT_MS=30000
@@ -275,74 +284,102 @@ BATCH_SIZE=100
 
 ---
 
-## Error Handling and Retry Logic
+## Enhanced Error Handling
 
-### Error Categories
+### PACS.002 Response Processing Errors
 
-| Error Type | Retry Strategy | Max Retries | Backoff |
-|------------|---------------|-------------|---------|
-| **Network Timeout** | Exponential Backoff | 3 | 1s, 2s, 4s |
-| **Service Unavailable** | Linear Backoff | 5 | 2s, 4s, 6s, 8s, 10s |
-| **Authentication Failed** | Manual Intervention | 0 | N/A |
-| **Message Format Error** | Dead Letter Queue | 0 | N/A |
-| **Database Error** | Exponential Backoff | 3 | 1s, 3s, 9s |
+| Error Type | Retry Strategy | Max Retries | Action |
+|------------|---------------|-------------|--------|
+| **External System Unavailable** | Exponential Backoff | 3 | Store for manual intervention |
+| **Invalid Response Format** | No Retry | 0 | Log and mark as failed |
+| **Endpoint Not Found** | Manual Intervention | 0 | Administrative review |
+| **Delivery Timeout** | Linear Backoff | 2 | Retry with increased timeout |
 
-### Retry Implementation
+### Response Delivery Flow
 
 ```typescript
-async processWithRetry(message: Message, maxRetries: number = 3): Promise<ProcessingResult> {
+async forwardResponseToExternal(responseMessage: PACS002Message, endpoint: string): Promise<boolean> {
   let attempt = 0;
-  let lastError: Error;
+  const maxAttempts = 3;
   
-  while (attempt < maxRetries) {
+  while (attempt < maxAttempts) {
     try {
-      return await this.processMessage(message);
-    } catch (error) {
-      lastError = error;
-      attempt++;
+      const response = await this.externalSystemClient.sendPacs002(endpoint, responseMessage);
       
-      if (attempt < maxRetries) {
-        const delay = this.calculateBackoff(attempt, error.type);
-        await this.delay(delay);
+      if (response.success) {
+        logger.info('PACS.002 response delivered successfully', {
+          messageId: responseMessage.messageId,
+          endpoint,
+          attempt: attempt + 1
+        });
+        return true;
+      }
+      
+      attempt++;
+      if (attempt < maxAttempts) {
+        await this.delay(Math.pow(2, attempt) * 1000); // Exponential backoff
+      }
+      
+    } catch (error) {
+      logger.error('PACS.002 response delivery failed', {
+        messageId: responseMessage.messageId,
+        endpoint,
+        attempt: attempt + 1,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+      
+      attempt++;
+      if (attempt < maxAttempts) {
+        await this.delay(Math.pow(2, attempt) * 1000);
       }
     }
   }
   
-  // Send to dead letter queue
-  await this.sendToDeadLetterQueue(message, lastError);
-  throw lastError;
+  // All attempts failed
+  logger.error('PACS.002 response delivery failed after all attempts', {
+    messageId: responseMessage.messageId,
+    endpoint,
+    totalAttempts: maxAttempts
+  });
+  
+  return false;
 }
 ```
 
 ---
 
-## Performance Characteristics
+## Performance Characteristics (Updated)
 
-### Processing Metrics
+### Enhanced Processing Metrics
 - **Average Processing Time**: 200-500ms per message
-- **Throughput**: 500+ messages per second
+- **PACS.002 Processing Time**: 50-150ms additional per response
+- **Throughput**: 500+ messages per second (including responses)
+- **Response Delivery Time**: 100-300ms to external systems
 - **Concurrent Processing**: 50+ messages simultaneously
-- **Memory Usage**: 1-2GB per instance
+- **Memory Usage**: 1.5-2.5GB per instance
 
 ### SLA Requirements
 - **Availability**: 99.9% uptime
 - **Processing Latency**: 95th percentile < 1 second
+- **Response Delivery**: 95th percentile < 500ms
 - **Message Loss Rate**: < 0.01%
-- **Order Preservation**: Within partition guaranteed
+- **Response Delivery Success Rate**: > 99.5%
 
 ---
 
-## Monitoring and Alerting
+## Monitoring and Alerting (Enhanced)
 
 ### Key Metrics
 
 - **Message Processing Rate**: Messages per second by topic
-- **Processing Latency**: P50, P95, P99 latencies
-- **Error Rates**: By error type and downstream service
-- **Queue Depth**: Kafka consumer lag
-- **Database Performance**: Spanner query latencies
+- **PACS.002 Response Rate**: Responses processed per second
+- **Response Delivery Success Rate**: Percentage of successful external deliveries
+- **Processing Latency**: P50, P95, P99 latencies by message type
+- **External System Response Times**: Delivery latencies by endpoint
+- **Error Rates**: By error type, downstream service, and external system
+- **Queue Depth**: Kafka consumer lag for all topics
 
-### Health Checks
+### Health Checks (Updated)
 
 ```typescript
 async healthCheck(): Promise<HealthStatus> {
@@ -350,7 +387,8 @@ async healthCheck(): Promise<HealthStatus> {
     this.kafkaConsumer.checkConnectivity(),
     this.spannerClient.checkConnection(),
     this.vamMediationClient.healthCheck(),
-    this.limitCheckClient.healthCheck()
+    this.limitCheckClient.healthCheck(),
+    this.externalSystemClient.healthCheck()  // NEW: External systems health
   ]);
   
   return {
@@ -359,7 +397,8 @@ async healthCheck(): Promise<HealthStatus> {
       kafka: checks[0].status,
       spanner: checks[1].status,
       vamMediation: checks[2].status,
-      limitCheck: checks[3].status
+      limitCheck: checks[3].status,
+      externalSystems: checks[4].status  // NEW
     },
     timestamp: new Date().toISOString()
   };
@@ -368,66 +407,21 @@ async healthCheck(): Promise<HealthStatus> {
 
 ---
 
-## Deployment Configuration
+## Summary of Enhancements
 
-### Docker Configuration
+### New Capabilities Added
 
-```dockerfile
-FROM node:18-alpine
-WORKDIR /app
-COPY package*.json ./
-RUN npm ci --only=production
-COPY . .
-EXPOSE 3004
-CMD ["npm", "start"]
-```
+1. **✅ PACS.002 Response Processing**: Handles PACS.002 messages from fast-inwd-processor-service
+2. **✅ External System Integration**: Forwards responses to original requestors
+3. **✅ Response Audit Trail**: Comprehensive tracking of response delivery
+4. **✅ Enhanced Error Handling**: Robust retry mechanisms for response delivery
+5. **✅ Delivery Monitoring**: Real-time tracking of response delivery success rates
 
-### Kubernetes Deployment
+### Integration Points
 
-```yaml
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: fast-orchestrator-service
-spec:
-  replicas: 3
-  selector:
-    matchLabels:
-      app: fast-orchestrator-service
-  template:
-    metadata:
-      labels:
-        app: fast-orchestrator-service
-    spec:
-      containers:
-      - name: orchestrator
-        image: fast-orchestrator-service:latest
-        ports:
-        - containerPort: 3004
-        env:
-        - name: HTTP_PORT
-          value: "3004"
-        - name: KAFKA_BROKERS
-          value: "kafka:9092"
-        - name: SPANNER_PROJECT_ID
-          value: "gpp-g3-project"
-        resources:
-          requests:
-            memory: "1Gi"
-            cpu: "500m"
-          limits:
-            memory: "2Gi"
-            cpu: "1000m"
-        livenessProbe:
-          httpGet:
-            path: /health
-            port: 3004
-          initialDelaySeconds: 30
-          periodSeconds: 10
-        readinessProbe:
-          httpGet:
-            path: /health
-            port: 3004
-          initialDelaySeconds: 10
-          periodSeconds: 5
-``` 
+- **Input**: PACS.002 responses from `pacs-response-messages` Kafka topic
+- **Processing**: Response validation, endpoint resolution, delivery orchestration
+- **Output**: PACS.002 delivery to external systems via HTTP/HTTPS
+- **Audit**: Complete response processing and delivery audit trail in Cloud Spanner
+
+The enhanced **Fast Orchestrator Service** now provides complete end-to-end orchestration including proper PACS.002 response delivery to original payment requestors, ensuring full transaction lifecycle closure and regulatory compliance. 

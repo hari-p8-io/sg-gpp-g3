@@ -4,6 +4,8 @@
 
 The **Fast Account Lookup Service** is a gRPC-based microservice that provides account lookup and enrichment capabilities for PACS message processing in the Singapore G3 Payment Platform. It serves as the primary source for account system detection (VAM/MDZ) and comprehensive account enrichment data.
 
+**Note**: This service is called by the **fast-inwd-processor-service** which handles overall message orchestration and PACS.002 response generation.
+
 ### Key Responsibilities
 - Lookup account information based on creditor account IDs
 - Determine account system (VAM, MDZ, MEPS, FAST) based on account patterns
@@ -17,6 +19,7 @@ The **Fast Account Lookup Service** is a gRPC-based microservice that provides a
 - **Package**: `gpp.g3.accountlookup`
 - **Technology Stack**: TypeScript, gRPC
 - **Implementation**: Currently stubbed with intelligent mock data
+- **Client**: fast-inwd-processor-service (orchestration hub)
 
 ---
 
@@ -49,7 +52,12 @@ The **Fast Account Lookup Service** is a gRPC-based microservice that provides a
               │                              │                              │
               │ AccountLookupResponse        │                              │
               │◄─────────────────────────────│                              │
+              │                              │                              │
+              │ [Caller handles PACS.002     │                              │
+              │  response based on result]   │                              │
 ```
+
+**Note**: The calling fast-inwd-processor-service generates appropriate PACS.002 responses based on the success/failure of the account lookup operation.
 
 ---
 

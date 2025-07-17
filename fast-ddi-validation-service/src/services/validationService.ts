@@ -1,6 +1,7 @@
 import { logger } from '../utils/logger';
 import { xmlParser } from '../utils/xmlParser';
 import { kafkaClient, KafkaPublishMessage } from './kafkaClient';
+import { MandateLookupClient, MandateLookupRequest, MandateLookupResponse } from '../http/clients/mandateLookupClient'; // UPDATED: Changed from gRPC to HTTP client
 import { config } from '../config/default';
 
 export interface ValidationRequest {
@@ -23,6 +24,7 @@ export interface ValidationResponse {
   kafkaPublished: boolean;
   processedAt: number;
   nextService: string;
+  mandateValidation?: MandateValidationResult; // NEW: Mandate validation result
 }
 
 export interface ValidationResult {
@@ -30,6 +32,7 @@ export interface ValidationResult {
   errors: ValidationError[];
   currencyValidation: CurrencyValidation;
   countryValidation: CountryValidation;
+  mandateValidation?: MandateValidationResult; // NEW: Include mandate validation
   validationMetadata: Record<string, string>;
 }
 
@@ -54,15 +57,42 @@ export interface CountryValidation {
   validationMessage: string;
 }
 
+// NEW: Mandate validation result interface
+export interface MandateValidationResult {
+  mandateRequired: boolean;
+  mandateValid: boolean;
+  mandateReference: string;
+  mandateStatus: string;
+  mandateErrors: string[];
+  mandateDetails?: any;
+}
+
 export class DDIValidationService {
   private readonly expectedCurrency: string;
   private readonly expectedCountry: string;
   private readonly isTestMode: boolean;
+  private readonly mandateLookupClient: MandateLookupClient; // NEW: Mandate lookup client (now HTTP)
+  private readonly mandateValidationEnabled: boolean; // NEW: Feature flag
 
   constructor() {
     this.expectedCurrency = config.expectedCurrency;
     this.expectedCountry = config.expectedCountry;
     this.isTestMode = config.environment === 'test' || config.useTestMode;
+    
+    // NEW: Initialize HTTP mandate lookup client
+    this.mandateValidationEnabled = process.env.MANDATE_VALIDATION_ENABLED === 'true';
+    this.mandateLookupClient = new MandateLookupClient(
+      process.env.MANDATE_LOOKUP_SERVICE_URL || 'http://localhost:3005', // UPDATED: HTTP URL instead of gRPC
+      parseInt(process.env.MANDATE_LOOKUP_TIMEOUT_MS || '3000', 10)
+    );
+    
+    logger.info('DDIValidationService initialized', {
+      expectedCurrency: this.expectedCurrency,
+      expectedCountry: this.expectedCountry,
+      isTestMode: this.isTestMode,
+      mandateValidationEnabled: this.mandateValidationEnabled,
+      mandateLookupServiceUrl: process.env.MANDATE_LOOKUP_SERVICE_URL || 'http://localhost:3005'
+    });
   }
 
   async validateEnrichedMessage(request: ValidationRequest): Promise<ValidationResponse> {
@@ -72,7 +102,8 @@ export class DDIValidationService {
       logger.info('Starting validation process', {
         messageId: request.messageId,
         puid: request.puid,
-        messageType: request.messageType
+        messageType: request.messageType,
+        mandateValidationEnabled: this.mandateValidationEnabled
       });
 
       // Parse XML and extract fields
@@ -98,108 +129,120 @@ export class DDIValidationService {
             nextService: 'fast-orchestrator-service'
           };
         } else {
-          throw xmlError; // Re-throw if not in test mode
+          throw new Error(`XML parsing failed: ${xmlError instanceof Error ? xmlError.message : 'Unknown XML error'}`);
         }
       }
-      
-      // If in test mode, check if we should bypass validation or test specific scenarios
-      if (this.isTestMode) {
-        // Still perform validation for intentionally invalid test cases
-        const shouldBypassValidation = this.shouldBypassValidationInTestMode(parsedXml, request.enrichmentData);
-        
-        if (shouldBypassValidation) {
-          logger.info('Test mode: Bypassing normal validation, returning mock success');
-          const mockValidationResult = this.createMockValidationResult({});
-          const jsonPayload = xmlParser.convertToJSON(
-            request.enrichedXmlPayload, 
-            request.enrichmentData,
-            request.messageId,
-            request.puid,
-            request.messageType
-          );
-          
-          return {
-            messageId: request.messageId,
-            puid: request.puid,
-            success: true,
-            errorMessage: undefined,
-            validationResult: mockValidationResult,
-            jsonPayload,
-            kafkaPublished: true, // Mock successful Kafka publish
-            processedAt: Date.now(),
-            nextService: 'fast-orchestrator-service'
-          };
-        }
-        // If not bypassing, continue with normal validation but in test mode
-        logger.info('Test mode: Running validation for test scenario');
-      }
-      
-      // Perform validations with the parsed XML
-      const validationResult = await this.performValidations(parsedXml, request.enrichmentData);
 
-      // Generate JSON payload for successful validation
+      // Perform validations
+      const validationResult = await this.performValidations(parsedXml, request.enrichmentData, request);
+
+      if (!validationResult.isValid) {
+        const errorMessages = validationResult.errors.map(e => e.errorMessage).join(', ');
+        logger.warn('Validation failed', {
+          messageId: request.messageId,
+          errors: errorMessages
+        });
+
+        return {
+          messageId: request.messageId,
+          puid: request.puid,
+          success: false,
+          errorMessage: errorMessages,
+          validationResult,
+          jsonPayload: undefined,
+          kafkaPublished: false,
+          processedAt: Date.now(),
+          nextService: '',
+          mandateValidation: validationResult.mandateValidation
+        };
+      }
+
+      // Convert to JSON
       const jsonPayload = xmlParser.convertToJSON(
-        request.enrichedXmlPayload, 
+        request.enrichedXmlPayload,
         request.enrichmentData,
         request.messageId,
         request.puid,
         request.messageType
       );
 
-      // Publish to Kafka if validation successful
-      let kafkaPublished = false;
-      if (validationResult.isValid) {
-        kafkaPublished = await this.publishToKafka({
-          messageId: request.messageId,
-          puid: request.puid,
-          jsonPayload,
-          enrichmentData: request.enrichmentData,
-          validationResult,
-          timestamp: request.timestamp
-        });
-      }
-
-      const response: ValidationResponse = {
+      // Publish to Kafka
+      const kafkaMessage: KafkaPublishMessage = {
         messageId: request.messageId,
         puid: request.puid,
-        success: validationResult.isValid,
-        errorMessage: validationResult.isValid ? undefined : this.buildErrorMessage(validationResult.errors),
+        messageType: request.messageType,
+        jsonPayload,
+        enrichmentData: request.enrichmentData,
         validationResult,
-        jsonPayload: validationResult.isValid ? jsonPayload : undefined,
-        kafkaPublished,
-        processedAt: Date.now(),
-        nextService: 'fast-orchestrator-service'
+        timestamp: request.timestamp,
+        sourceService: 'fast-ddi-validation-service'
       };
 
-      logger.info('Validation completed', {
+      const kafkaPublished = await kafkaClient.publishValidatedMessage(kafkaMessage);
+
+      if (!kafkaPublished) {
+        logger.error('Failed to publish to Kafka', {
+          messageId: request.messageId,
+          puid: request.puid
+        });
+
+        return {
+          messageId: request.messageId,
+          puid: request.puid,
+          success: false,
+          errorMessage: 'Failed to publish validated message to Kafka',
+          validationResult,
+          jsonPayload,
+          kafkaPublished: false,
+          processedAt: Date.now(),
+          nextService: '',
+          mandateValidation: validationResult.mandateValidation
+        };
+      }
+
+      const processingTime = Date.now() - startTime;
+      logger.info('Validation completed successfully', {
         messageId: request.messageId,
         puid: request.puid,
-        success: validationResult.isValid,
-        kafkaPublished,
-        processingTimeMs: Date.now() - startTime
+        processingTime,
+        mandateValidated: validationResult.mandateValidation?.mandateRequired || false
       });
 
-      return response;
+      return {
+        messageId: request.messageId,
+        puid: request.puid,
+        success: true,
+        errorMessage: undefined,
+        validationResult,
+        jsonPayload,
+        kafkaPublished: true,
+        processedAt: Date.now(),
+        nextService: 'fast-orchestrator-service',
+        mandateValidation: validationResult.mandateValidation
+      };
 
     } catch (error) {
+      const processingTime = Date.now() - startTime;
+      const errorMessage = error instanceof Error ? error.message : 'Unknown validation error';
+      
       logger.error('Validation process failed', {
         messageId: request.messageId,
         puid: request.puid,
-        error: error instanceof Error ? error.message : 'Unknown error',
-        processingTimeMs: Date.now() - startTime
+        error: errorMessage,
+        processingTime
       });
 
       return {
         messageId: request.messageId,
         puid: request.puid,
         success: false,
-        errorMessage: `Validation process failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        errorMessage,
         validationResult: {
           isValid: false,
           errors: [{
             field: 'general',
             errorCode: 'VALIDATION_ERROR',
-            errorMessage: error instanceof Error ? error.message : 'Unknown error',
+            errorMessage,
             severity: 'ERROR'
           }],
           currencyValidation: {
@@ -217,54 +260,197 @@ export class DDIValidationService {
         jsonPayload: undefined,
         kafkaPublished: false,
         processedAt: Date.now(),
-        nextService: 'fast-orchestrator-service'
+        nextService: ''
       };
     }
   }
 
-  private async performValidations(parsedXml: any, enrichmentData?: any): Promise<ValidationResult> {
+  private async performValidations(parsedXml: any, enrichmentData: any, request: ValidationRequest): Promise<ValidationResult> {
     const errors: ValidationError[] = [];
-    const validationMetadata: Record<string, string> = {};
-
+    
     // Currency validation
-    const currencyValidation = this.validateCurrency(parsedXml.currency);
+    const currencyValidation = this.validateCurrency(parsedXml);
     if (!currencyValidation.isValid) {
       errors.push({
         field: 'currency',
-        errorCode: 'INVALID_CURRENCY',
+        errorCode: 'CURRENCY_ERROR',
         errorMessage: currencyValidation.validationMessage,
         severity: 'ERROR'
       });
     }
 
     // Country validation
-    const countryValidation = this.validateCountry(parsedXml.country);
+    const countryValidation = this.validateCountry(parsedXml);
     if (!countryValidation.isValid) {
       errors.push({
         field: 'country',
-        errorCode: 'INVALID_COUNTRY',
+        errorCode: 'COUNTRY_ERROR',
         errorMessage: countryValidation.validationMessage,
         severity: 'ERROR'
       });
     }
 
-    // Additional validations
-    this.validateEnrichmentData(enrichmentData, errors);
-    this.validateXMLStructure(parsedXml, errors);
+    // NEW: Mandate validation for DDI messages
+    let mandateValidation: MandateValidationResult | undefined;
+    if (this.mandateValidationEnabled) {
+      mandateValidation = await this.validateMandate(request, parsedXml);
+      
+      if (mandateValidation.mandateRequired && !mandateValidation.mandateValid) {
+        mandateValidation.mandateErrors.forEach(error => {
+          errors.push({
+            field: 'mandate',
+            errorCode: 'MANDATE_ERROR',
+            errorMessage: error,
+            severity: 'ERROR'
+          });
+        });
+      }
+    }
 
-    // Add metadata
-    validationMetadata.validatedAt = new Date().toISOString();
-    validationMetadata.validationService = 'fast-validation-service';
-    validationMetadata.expectedCurrency = this.expectedCurrency;
-    validationMetadata.expectedCountry = this.expectedCountry;
+    // Enrichment data validation
+    this.validateEnrichmentData(enrichmentData, errors);
+
+    // XML structure validation
+    this.validateXMLStructure(parsedXml, errors);
 
     return {
       isValid: errors.length === 0,
       errors,
       currencyValidation,
       countryValidation,
-      validationMetadata
+      mandateValidation, // NEW: Include mandate validation result
+      validationMetadata: {
+        validationTimestamp: new Date().toISOString(),
+        validatorVersion: '1.0.0',
+        mandateValidationEnabled: this.mandateValidationEnabled.toString()
+      }
     };
+  }
+
+  // NEW: Mandate validation method (now using HTTP client)
+  private async validateMandate(request: ValidationRequest, parsedXml: any): Promise<MandateValidationResult> {
+    try {
+      // Skip mandate validation for non-DDI message types
+      if (request.messageType !== 'PACS.003') {
+        return {
+          mandateRequired: false,
+          mandateValid: true,
+          mandateReference: '',
+          mandateStatus: 'N/A',
+          mandateErrors: [],
+          mandateDetails: undefined
+        };
+      }
+
+      logger.debug('Performing mandate validation via HTTP', {
+        messageId: request.messageId,
+        messageType: request.messageType
+      });
+
+      // Extract mandate information from XML
+      const mandateInfo = this.extractMandateInfo(parsedXml, request.enrichmentData);
+      
+      if (!mandateInfo.mandateId) {
+        return {
+          mandateRequired: true,
+          mandateValid: false,
+          mandateReference: '',
+          mandateStatus: 'MISSING',
+          mandateErrors: ['MANDATE_ID_MISSING: Mandate ID is required for Direct Debit Instructions'],
+          mandateDetails: undefined
+        };
+      }
+
+      // Create mandate lookup request
+      const mandateLookupRequest: MandateLookupRequest = {
+        messageId: request.messageId,
+        puid: request.puid,
+        messageType: request.messageType,
+        xmlPayload: request.enrichedXmlPayload,
+        debtorAccount: mandateInfo.debtorAccount,
+        creditorAccount: mandateInfo.creditorAccount,
+        mandateId: mandateInfo.mandateId,
+        amount: mandateInfo.amount,
+        currency: mandateInfo.currency,
+        metadata: request.metadata || {}
+      };
+
+      // Call mandate lookup service via HTTP
+      const mandateResult = await this.mandateLookupClient.lookupMandate(mandateLookupRequest);
+
+      logger.debug('Mandate lookup completed via HTTP', {
+        messageId: request.messageId,
+        success: mandateResult.success,
+        mandateReference: mandateResult.mandateReference,
+        statusCode: mandateResult.mandateStatus.statusCode
+      });
+
+      return {
+        mandateRequired: true,
+        mandateValid: mandateResult.success && mandateResult.mandateStatus.isValid && mandateResult.mandateStatus.isActive,
+        mandateReference: mandateResult.mandateReference,
+        mandateStatus: mandateResult.mandateStatus.statusCode,
+        mandateErrors: mandateResult.success ? [] : mandateResult.validationErrors,
+        mandateDetails: mandateResult.mandateDetails
+      };
+
+    } catch (error) {
+      logger.error('Mandate validation failed', {
+        messageId: request.messageId,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+
+      return {
+        mandateRequired: true,
+        mandateValid: false,
+        mandateReference: '',
+        mandateStatus: 'ERROR',
+        mandateErrors: [`MANDATE_SERVICE_ERROR: ${error instanceof Error ? error.message : 'Unknown error'}`],
+        mandateDetails: undefined
+      };
+    }
+  }
+
+  // NEW: Extract mandate information from XML and enrichment data
+  private extractMandateInfo(parsedXml: any, enrichmentData: any): {
+    mandateId?: string;
+    debtorAccount: string;
+    creditorAccount: string;
+    amount: string;
+    currency: string;
+  } {
+    try {
+      // Extract from enrichment data first (more reliable)
+      const debtorAccount = enrichmentData?.physicalAcctInfo?.acctId || 
+                          enrichmentData?.receivedAcctId || '';
+      
+      // Try to extract from XML
+      const amount = xmlParser.extractField(parsedXml, 'IntrBkSttlmAmt') || '0.00';
+      const currency = xmlParser.extractField(parsedXml, 'IntrBkSttlmAmt/@Ccy') || 'SGD';
+      const creditorAccount = xmlParser.extractField(parsedXml, 'CdtrAcct/Id/Othr/Id') || '';
+      const mandateId = xmlParser.extractField(parsedXml, 'DrctDbtTxInf/DrctDbtTx/MndtRltdInf/MndtId') || 
+                       xmlParser.extractField(parsedXml, 'MndtId'); // Fallback
+
+      return {
+        mandateId,
+        debtorAccount,
+        creditorAccount,
+        amount,
+        currency
+      };
+
+    } catch (error) {
+      logger.warn('Failed to extract mandate information', {
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+
+      return {
+        debtorAccount: '',
+        creditorAccount: '',
+        amount: '0.00',
+        currency: 'SGD'
+      };
+    }
   }
 
   private shouldBypassValidationInTestMode(parsedXml: any, enrichmentData?: any): boolean {
@@ -492,33 +678,43 @@ export class DDIValidationService {
       : 'Validation failed with unknown errors';
   }
 
-  async healthCheck(): Promise<{ status: string; message: string }> {
+  async healthCheck(): Promise<{ status: string; message: string; dependencies?: any }> {
     try {
-      if (this.isTestMode) {
-        // In test mode, return healthy regardless of external dependencies
-        return { status: 'SERVING', message: 'Validation service is healthy (test mode)' };
+      const dependencies: any = {
+        kafka: await kafkaClient.healthCheck()
+      };
+
+      // NEW: Include mandate lookup service health check (via HTTP)
+      if (this.mandateValidationEnabled) {
+        dependencies.mandateLookup = await this.mandateLookupClient.healthCheck();
       }
-      
-      const kafkaHealth = await kafkaClient.healthCheck();
-      
-      if (kafkaHealth.status === 'HEALTHY') {
-        return { status: 'SERVING', message: 'Validation service is healthy' };
-      } else {
-        return { status: 'NOT_SERVING', message: `Validation service unhealthy: ${kafkaHealth.message}` };
-      }
+
+      const allHealthy = Object.values(dependencies).every((dep: any) => dep.status === 'SERVING');
+
+      return {
+        status: allHealthy ? 'SERVING' : 'NOT_SERVING',
+        message: allHealthy ? 'All dependencies healthy' : 'Some dependencies unhealthy',
+        dependencies
+      };
+
     } catch (error) {
-      logger.error('Validation service health check failed', {
+      logger.error('Health check failed', {
         error: error instanceof Error ? error.message : 'Unknown error'
       });
-      return { 
-        status: 'NOT_SERVING', 
-        message: `Health check failed: ${error instanceof Error ? error.message : 'Unknown error'}` 
+
+      return {
+        status: 'NOT_SERVING',
+        message: 'Health check failed'
       };
     }
   }
 
-  async shutdown(): Promise<void> {
-    logger.info('Shutting down validation service');
-    await kafkaClient.disconnect();
+  shutdown(): void {
+    logger.info('Shutting down DDIValidationService');
+    
+    // NEW: Disconnect mandate lookup client (HTTP client)
+    if (this.mandateLookupClient) {
+      this.mandateLookupClient.disconnect();
+    }
   }
 } 

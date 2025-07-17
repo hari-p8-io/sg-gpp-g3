@@ -3,7 +3,9 @@ import { extractCdtrAcct, validateXML, isFinancialMessage } from '../utils/xmlPa
 import { AccountLookupClient, AccountLookupRequest } from '../grpc/clients/accountLookupClient';
 import { ReferenceDataClient } from '../grpc/clients/referenceDataClient';
 import { ValidationClient, ValidationRequest } from '../grpc/clients/validationClient';
-import { KafkaClient } from './kafkaClient'; // NEW: Add Kafka client
+import { KafkaClient } from './kafkaClient';
+import { ResponseKafkaClient, PACS002Message } from './responseKafkaClient'; // NEW: Response Kafka client
+import { PACS002Generator, PACS002Request, PACS002Response } from '../utils/pacs002Generator'; // NEW: PACS.002 generator
 import { logger } from '../utils/logger';
 import { config } from '../config/default';
 
@@ -25,27 +27,34 @@ export interface EnrichmentResponse {
   enrichmentData?: any;
   processedAt: number;
   nextService: string;
-  routingDecision?: string; // NEW: Track routing decision
-  kafkaPublished?: boolean; // NEW: Track Kafka publishing for PACS.008
+  routingDecision?: string;
+  kafkaPublished?: boolean;
+  pacs002Published?: boolean; // NEW: Track PACS.002 response publishing
 }
 
 export class InwdProcessorService {
   private accountLookupClient: AccountLookupClient;
   private referenceDataClient: ReferenceDataClient;
   private validationClient: ValidationClient;
-  private kafkaClient: KafkaClient; // NEW: Kafka client for direct publishing
+  private kafkaClient: KafkaClient;
+  private responseKafkaClient: ResponseKafkaClient; // NEW: Response Kafka client
+  private pacs002Generator: PACS002Generator; // NEW: PACS.002 generator
   private useMockMode: boolean;
 
   constructor(
     accountLookupClient: AccountLookupClient,
     referenceDataClient: ReferenceDataClient,
     validationClient: ValidationClient,
-    kafkaClient: KafkaClient // NEW: Inject Kafka client
+    kafkaClient: KafkaClient,
+    responseKafkaClient: ResponseKafkaClient, // NEW: Inject response Kafka client
+    pacs002Generator: PACS002Generator // NEW: Inject PACS.002 generator
   ) {
     this.accountLookupClient = accountLookupClient;
     this.referenceDataClient = referenceDataClient;
     this.validationClient = validationClient;
-    this.kafkaClient = kafkaClient; // NEW: Initialize Kafka client
+    this.kafkaClient = kafkaClient;
+    this.responseKafkaClient = responseKafkaClient; // NEW: Initialize response client
+    this.pacs002Generator = pacs002Generator; // NEW: Initialize PACS.002 generator
     this.useMockMode = process.env.NODE_ENV === 'test' || process.env.USE_MOCK_MODE === 'true';
   }
 
@@ -63,13 +72,27 @@ export class InwdProcessorService {
       const referenceDataClient = new ReferenceDataClient();
       const validationClient = new ValidationClient('localhost:50053');
       
-      // NEW: Initialize Kafka client
+      // Initialize Kafka clients
       const kafkaClient = new KafkaClient();
       await kafkaClient.connect();
 
-      return new InwdProcessorService(accountLookupClient, referenceDataClient, validationClient, kafkaClient);
+      // NEW: Initialize response Kafka client
+      const responseKafkaClient = new ResponseKafkaClient();
+      await responseKafkaClient.connect();
+
+      // NEW: Initialize PACS.002 generator
+      const pacs002Generator = new PACS002Generator();
+
+      return new InwdProcessorService(
+        accountLookupClient, 
+        referenceDataClient, 
+        validationClient, 
+        kafkaClient, 
+        responseKafkaClient,
+        pacs002Generator
+      );
     } catch (error) {
-      throw new Error(`Failed to initialize EnrichmentService: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new Error(`Failed to initialize InwdProcessorService: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 
@@ -87,13 +110,20 @@ export class InwdProcessorService {
       // Validate input
       const validationError = await this.validateRequest(request);
       if (validationError) {
-        return this.createErrorResponse(request, validationError);
+        const errorResponse = this.createErrorResponse(request, validationError);
+        // NEW: Send PACS.002 failure response
+        await this.sendPacs002FailureResponse(request, validationError, 'VALIDATION_ERROR');
+        return errorResponse;
       }
 
       // Extract CdtrAcct from XML payload
       const cdtrAcct = await extractCdtrAcct(request.xmlPayload);
       if (!cdtrAcct) {
-        return this.createErrorResponse(request, 'Could not extract CdtrAcct from XML payload');
+        const errorMessage = 'Could not extract CdtrAcct from XML payload';
+        const errorResponse = this.createErrorResponse(request, errorMessage);
+        // NEW: Send PACS.002 failure response
+        await this.sendPacs002FailureResponse(request, errorMessage, 'INVALID_ACCOUNT');
+        return errorResponse;
       }
 
       logger.debug('CdtrAcct extracted from XML', {
@@ -104,13 +134,16 @@ export class InwdProcessorService {
       // Perform account lookup and reference data enrichment
       const enrichmentData = await this.performEnrichment(request, cdtrAcct);
       if (!enrichmentData.success) {
-        return this.createErrorResponse(request, enrichmentData.errorMessage || 'Unknown error', enrichmentData.errorCode);
+        const errorResponse = this.createErrorResponse(request, enrichmentData.errorMessage || 'Unknown error', enrichmentData.errorCode);
+        // NEW: Send PACS.002 failure response
+        await this.sendPacs002FailureResponse(request, enrichmentData.errorMessage || 'Unknown error', enrichmentData.errorCode || 'ENRICHMENT_ERROR');
+        return errorResponse;
       }
 
       // Create enriched XML payload
       const enrichedPayload = this.createEnrichedXML(request.xmlPayload, enrichmentData.data);
 
-      // NEW: Determine routing based on message type
+      // Determine routing based on message type
       const routingDecision = this.determineRouting(request.messageType);
       
       logger.info('Routing decision made', {
@@ -123,24 +156,31 @@ export class InwdProcessorService {
         // PACS.003 - Route to validation service
         return await this.routeToValidationService(request, enrichedPayload, enrichmentData.data);
       } else if (routingDecision === 'DIRECT_KAFKA') {
-        // PACS.008 - Route directly to Kafka
+        // PACS.008/007 - Route directly to Kafka
         return await this.routeToKafkaDirectly(request, enrichedPayload, enrichmentData.data);
       } else {
-        return this.createErrorResponse(request, `Unknown routing decision: ${routingDecision}`);
+        const errorMessage = `Unknown routing decision: ${routingDecision}`;
+        const errorResponse = this.createErrorResponse(request, errorMessage);
+        // NEW: Send PACS.002 failure response
+        await this.sendPacs002FailureResponse(request, errorMessage, 'ROUTING_ERROR');
+        return errorResponse;
       }
 
     } catch (error) {
       const processingTime = Date.now() - startTime;
+      const errorMessage = error instanceof Error ? error.message : 'Internal processing error';
+      
       logger.error('Financial message enrichment failed', {
         messageId: request.messageId,
         puid: request.puid,
-        error: error instanceof Error ? error.message : 'Unknown error',
+        error: errorMessage,
         processingTime
       });
 
-      return this.createErrorResponse(request, 
-        error instanceof Error ? error.message : 'Internal processing error'
-      );
+      // NEW: Send PACS.002 failure response
+      await this.sendPacs002FailureResponse(request, errorMessage, 'TECHNICAL_ERROR');
+
+      return this.createErrorResponse(request, errorMessage);
     }
   }
 
@@ -441,7 +481,7 @@ export class InwdProcessorService {
   }
 
   /**
-   * NEW: Route PACS.003 messages to validation service
+   * Route PACS.003 messages to validation service
    */
   private async routeToValidationService(
     request: EnrichmentRequest, 
@@ -473,6 +513,9 @@ export class InwdProcessorService {
           kafkaPublished: validationResponse.kafkaPublished
         });
 
+        // NEW: Send PACS.002 success response
+        const pacs002Published = await this.sendPacs002SuccessResponse(request, enrichmentData);
+
         return {
           messageId: request.messageId,
           puid: request.puid,
@@ -481,7 +524,8 @@ export class InwdProcessorService {
           enrichmentData: enrichmentData,
           processedAt: Date.now(),
           nextService: 'fast-orchestrator-service',
-          routingDecision: 'VALIDATION_SERVICE'
+          routingDecision: 'VALIDATION_SERVICE',
+          pacs002Published
         };
       } else {
         logger.error('Validation failed', {
@@ -489,24 +533,30 @@ export class InwdProcessorService {
           error: validationResponse.errorMessage
         });
 
+        // NEW: Send PACS.002 failure response
+        await this.sendPacs002FailureResponse(request, validationResponse.errorMessage || 'Validation failed', 'VALIDATION_ERROR');
+
         return this.createErrorResponse(request, 
           `Validation failed: ${validationResponse.errorMessage}`
         );
       }
     } catch (error) {
+      const errorMessage = `Validation service unavailable: ${error instanceof Error ? error.message : 'Unknown error'}`;
+      
       logger.error('Validation service call failed', {
         messageId: request.messageId,
         error: error instanceof Error ? error.message : 'Unknown error'
       });
 
-      return this.createErrorResponse(request, 
-        `Validation service unavailable: ${error instanceof Error ? error.message : 'Unknown error'}`
-      );
+      // NEW: Send PACS.002 failure response
+      await this.sendPacs002FailureResponse(request, errorMessage, 'TECHNICAL_ERROR');
+
+      return this.createErrorResponse(request, errorMessage);
     }
   }
 
   /**
-   * NEW: Route PACS.008 messages directly to Kafka
+   * Route PACS.008/007 messages directly to Kafka
    */
   private async routeToKafkaDirectly(
     request: EnrichmentRequest, 
@@ -530,7 +580,7 @@ export class InwdProcessorService {
         jsonPayload: jsonPayload,
         enrichmentData: enrichmentData,
         timestamp: request.timestamp,
-        sourceService: 'fast-enrichment-service'
+        sourceService: 'fast-inwd-processor-service'
       });
 
       if (kafkaPublished) {
@@ -539,6 +589,9 @@ export class InwdProcessorService {
           messageType: request.messageType,
           topic: 'enriched-messages'
         });
+
+        // NEW: Send PACS.002 success response
+        const pacs002Published = await this.sendPacs002SuccessResponse(request, enrichmentData);
 
         return {
           messageId: request.messageId,
@@ -549,42 +602,186 @@ export class InwdProcessorService {
           processedAt: Date.now(),
           nextService: 'fast-orchestrator-service',
           routingDecision: 'DIRECT_KAFKA',
-          kafkaPublished: true
+          kafkaPublished: true,
+          pacs002Published
         };
       } else {
-        return this.createErrorResponse(request, 'Failed to publish message to Kafka');
+        const errorMessage = 'Failed to publish message to Kafka';
+        
+        // NEW: Send PACS.002 failure response
+        await this.sendPacs002FailureResponse(request, errorMessage, 'KAFKA_ERROR');
+        
+        return this.createErrorResponse(request, errorMessage);
       }
     } catch (error) {
+      const errorMessage = `Kafka publishing failed: ${error instanceof Error ? error.message : 'Unknown error'}`;
+      
       logger.error('Kafka publishing failed', {
         messageId: request.messageId,
         error: error instanceof Error ? error.message : 'Unknown error'
       });
 
-      return this.createErrorResponse(request, 
-        `Kafka publishing failed: ${error instanceof Error ? error.message : 'Unknown error'}`
-      );
+      // NEW: Send PACS.002 failure response
+      await this.sendPacs002FailureResponse(request, errorMessage, 'KAFKA_ERROR');
+
+      return this.createErrorResponse(request, errorMessage);
     }
   }
 
   /**
-   * NEW: Create JSON payload for Kafka publishing
+   * NEW: Send PACS.002 success response
    */
-  private createJSONPayload(request: EnrichmentRequest, enrichedPayload: string, enrichmentData: any): any {
-    return {
-      messageId: request.messageId,
-      puid: request.puid,
-      messageType: request.messageType,
-      enrichedXmlPayload: enrichedPayload,
-      enrichmentData: enrichmentData,
-      extractedFields: {
-        cdtrAcct: enrichmentData.receivedAcctId,
-        amount: enrichmentData.messageData?.amount,
-        currency: enrichmentData.messageData?.currency || 'SGD',
-        country: enrichmentData.physicalAcctInfo?.country || 'SG'
-      },
-      processedAt: new Date().toISOString(),
-      sourceService: 'fast-enrichment-service'
-    };
+  private async sendPacs002SuccessResponse(request: EnrichmentRequest, enrichmentData: any): Promise<boolean> {
+    try {
+      const pacs002Request: PACS002Request = {
+        originalMessageId: request.messageId,
+        puid: request.puid,
+        messageType: request.messageType,
+        status: 'COMPLETED',
+        amount: this.extractAmount(request.xmlPayload),
+        currency: this.extractCurrency(request.xmlPayload) || config.defaultCurrency,
+        debtorAccount: this.extractDebtorAccount(request.xmlPayload),
+        creditorAccount: this.extractCreditorAccount(request.xmlPayload),
+        enrichmentData: enrichmentData,
+        processingTimeMs: Date.now() - request.timestamp
+      };
+
+      const pacs002Response = this.pacs002Generator.generatePacs002Success(pacs002Request);
+      
+      const kafkaMessage: PACS002Message = {
+        messageId: pacs002Response.messageId,
+        puid: request.puid,
+        responseType: 'PACS.002',
+        originalMessageType: request.messageType,
+        status: 'ACSC',
+        createdAt: pacs002Response.createdAt,
+        processingTimeMs: pacs002Request.processingTimeMs,
+        xmlPayload: pacs002Response.xmlPayload,
+        originalTransaction: {
+          amount: pacs002Request.amount,
+          currency: pacs002Request.currency,
+          debtorAccount: pacs002Request.debtorAccount,
+          creditorAccount: pacs002Request.creditorAccount,
+        },
+        enrichmentData: enrichmentData
+      };
+
+      return await this.responseKafkaClient.publishPacs002Response(kafkaMessage);
+
+    } catch (error) {
+      logger.error('Failed to send PACS.002 success response', {
+        messageId: request.messageId,
+        puid: request.puid,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+      return false;
+    }
+  }
+
+  /**
+   * NEW: Send PACS.002 failure response
+   */
+  private async sendPacs002FailureResponse(request: EnrichmentRequest, errorMessage: string, errorCode: string): Promise<boolean> {
+    try {
+      const pacs002Request: PACS002Request = {
+        originalMessageId: request.messageId,
+        puid: request.puid,
+        messageType: request.messageType,
+        status: 'FAILED',
+        amount: this.extractAmount(request.xmlPayload),
+        currency: this.extractCurrency(request.xmlPayload) || config.defaultCurrency,
+        debtorAccount: this.extractDebtorAccount(request.xmlPayload),
+        creditorAccount: this.extractCreditorAccount(request.xmlPayload),
+        errorCode: errorCode,
+        errorMessage: errorMessage,
+        processingTimeMs: Date.now() - request.timestamp
+      };
+
+      const pacs002Response = this.pacs002Generator.generatePacs002Failure(pacs002Request);
+      
+      const kafkaMessage: PACS002Message = {
+        messageId: pacs002Response.messageId,
+        puid: request.puid,
+        responseType: 'PACS.002',
+        originalMessageType: request.messageType,
+        status: 'RJCT',
+        createdAt: pacs002Response.createdAt,
+        processingTimeMs: pacs002Request.processingTimeMs,
+        xmlPayload: pacs002Response.xmlPayload,
+        originalTransaction: {
+          amount: pacs002Request.amount,
+          currency: pacs002Request.currency,
+          debtorAccount: pacs002Request.debtorAccount,
+          creditorAccount: pacs002Request.creditorAccount,
+        },
+        errorDetails: {
+          errorCode: errorCode,
+          errorMessage: errorMessage
+        }
+      };
+
+      return await this.responseKafkaClient.publishPacs002Response(kafkaMessage);
+
+    } catch (error) {
+      logger.error('Failed to send PACS.002 failure response', {
+        messageId: request.messageId,
+        puid: request.puid,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+      return false;
+    }
+  }
+
+  /**
+   * NEW: Extract amount from XML payload
+   */
+  private extractAmount(xmlPayload: string): string | undefined {
+    try {
+      const amountMatch = xmlPayload.match(/<IntrBkSttlmAmt[^>]*>([^<]+)<\/IntrBkSttlmAmt>/);
+      return amountMatch ? amountMatch[1] : undefined;
+    } catch (error) {
+      logger.debug('Could not extract amount from XML', { error: error instanceof Error ? error.message : 'Unknown error' });
+      return undefined;
+    }
+  }
+
+  /**
+   * NEW: Extract currency from XML payload
+   */
+  private extractCurrency(xmlPayload: string): string | undefined {
+    try {
+      const currencyMatch = xmlPayload.match(/<IntrBkSttlmAmt[^>]*Ccy="([^"]+)"[^>]*>/);
+      return currencyMatch ? currencyMatch[1] : undefined;
+    } catch (error) {
+      logger.debug('Could not extract currency from XML', { error: error instanceof Error ? error.message : 'Unknown error' });
+      return undefined;
+    }
+  }
+
+  /**
+   * NEW: Extract debtor account from XML payload
+   */
+  private extractDebtorAccount(xmlPayload: string): string | undefined {
+    try {
+      const debtorMatch = xmlPayload.match(/<DbtrAcct>[\s\S]*?<Id>[\s\S]*?<Othr>[\s\S]*?<Id>([^<]+)<\/Id>/);
+      return debtorMatch ? debtorMatch[1] : undefined;
+    } catch (error) {
+      logger.debug('Could not extract debtor account from XML', { error: error instanceof Error ? error.message : 'Unknown error' });
+      return undefined;
+    }
+  }
+
+  /**
+   * NEW: Extract creditor account from XML payload
+   */
+  private extractCreditorAccount(xmlPayload: string): string | undefined {
+    try {
+      const creditorMatch = xmlPayload.match(/<CdtrAcct>[\s\S]*?<Id>[\s\S]*?<Othr>[\s\S]*?<Id>([^<]+)<\/Id>/);
+      return creditorMatch ? creditorMatch[1] : undefined;
+    } catch (error) {
+      logger.debug('Could not extract creditor account from XML', { error: error instanceof Error ? error.message : 'Unknown error' });
+      return undefined;
+    }
   }
 
   /**
@@ -727,6 +924,27 @@ export class InwdProcessorService {
       defaultCurrency: metadata.currency || process.env.DEFAULT_CURRENCY || 'SGD',
       defaultAcctSys: metadata.acctSys || process.env.DEFAULT_ACCT_SYS || 'MDZ',
       defaultAcctGroup: metadata.acctGroup || process.env.DEFAULT_ACCT_GROUP || 'SGB'
+    };
+  }
+
+  /**
+   * NEW: Create JSON payload for Kafka publishing
+   */
+  private createJSONPayload(request: EnrichmentRequest, enrichedPayload: string, enrichmentData: any): any {
+    return {
+      messageId: request.messageId,
+      puid: request.puid,
+      messageType: request.messageType,
+      enrichedXmlPayload: enrichedPayload,
+      enrichmentData: enrichmentData,
+      extractedFields: {
+        cdtrAcct: enrichmentData.receivedAcctId,
+        amount: enrichmentData.messageData?.amount,
+        currency: enrichmentData.messageData?.currency || 'SGD',
+        country: enrichmentData.physicalAcctInfo?.country || 'SG'
+      },
+      processedAt: new Date().toISOString(),
+      sourceService: 'fast-enrichment-service'
     };
   }
 } 

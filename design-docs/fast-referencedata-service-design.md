@@ -4,6 +4,8 @@
 
 The **Fast Reference Data Service** is a gRPC-based microservice that provides authentication method lookup for the Singapore G3 Payment Platform. It determines the appropriate authentication method (GROUPLIMIT, AFPTHENLIMIT, AFPONLY) based on account information and business rules, enabling intelligent routing and processing decisions.
 
+**Note**: This service is called by the **fast-inwd-processor-service** which handles overall message orchestration and PACS.002 response generation.
+
 ### Key Responsibilities
 - Determine authentication methods based on account patterns and business rules
 - Provide reference data for risk assessment and limit profiling
@@ -17,6 +19,7 @@ The **Fast Reference Data Service** is a gRPC-based microservice that provides a
 - **Package**: `gpp.g3.referencedata`
 - **Technology Stack**: TypeScript, gRPC
 - **Implementation**: Rule-based authentication method determination
+- **Client**: fast-inwd-processor-service (orchestration hub)
 
 ---
 
@@ -51,7 +54,12 @@ The **Fast Reference Data Service** is a gRPC-based microservice that provides a
               │                              │                              │
               │ AuthMethodResponse           │                              │
               │◄─────────────────────────────│                              │
+              │                              │                              │
+              │ [Caller handles PACS.002     │                              │
+              │  response based on result]   │                              │
 ```
+
+**Note**: The calling fast-inwd-processor-service generates appropriate PACS.002 responses based on the success/failure of the authentication method lookup operation.
 
 ---
 

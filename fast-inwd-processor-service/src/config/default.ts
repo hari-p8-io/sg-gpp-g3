@@ -14,6 +14,13 @@ export interface ServiceConfig {
   maxRetryAttempts: number;
   retryBackoffMs: number;
   useMockAccountLookup: boolean;
+  kafka: {
+    brokers: string[];
+    enrichedMessagesTopic: string;
+    responseTopics: {
+      pacsResponses: string;
+    };
+  };
   database: {
     projectId: string;
     instanceId: string;
@@ -23,7 +30,7 @@ export interface ServiceConfig {
 
 export const config: ServiceConfig = {
   grpcPort: parseInt(process.env['GRPC_PORT'] || '50052', 10),
-  serviceName: process.env['SERVICE_NAME'] || 'fast-enrichment-service',
+  serviceName: process.env['SERVICE_NAME'] || 'fast-inwd-processor-service',
   logLevel: process.env['LOG_LEVEL'] || 'info',
   environment: process.env['ENVIRONMENT'] || 'development',
   country: process.env['COUNTRY'] || 'SG',
@@ -37,6 +44,13 @@ export const config: ServiceConfig = {
   maxRetryAttempts: parseInt(process.env['MAX_RETRY_ATTEMPTS'] || '3', 10),
   retryBackoffMs: parseInt(process.env['RETRY_BACKOFF_MS'] || '1000', 10),
   useMockAccountLookup: process.env['USE_MOCK_ACCOUNT_LOOKUP'] === 'true',
+  kafka: {
+    brokers: (process.env['KAFKA_BROKERS'] || 'localhost:9092').split(','),
+    enrichedMessagesTopic: process.env['KAFKA_ENRICHED_MESSAGES_TOPIC'] || 'enriched-messages',
+    responseTopics: {
+      pacsResponses: process.env['KAFKA_PACS_RESPONSE_TOPIC'] || 'pacs-response-messages'
+    }
+  },
   database: {
     projectId: process.env['SPANNER_PROJECT_ID'] || 'gpp-g3-project',
     instanceId: process.env['SPANNER_INSTANCE_ID'] || 'gpp-g3-instance',

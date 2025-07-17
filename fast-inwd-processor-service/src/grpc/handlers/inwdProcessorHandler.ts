@@ -10,7 +10,7 @@ enum HealthCheckStatus {
   SERVICE_UNKNOWN = 3
 }
 
-// Generated types based on enrichment_service.proto
+// Updated interface to include PACS.002 response status
 interface EnrichmentGrpcRequest {
   message_id: string;
   puid: string;
@@ -29,6 +29,10 @@ interface EnrichmentGrpcResponse {
   enrichment_data?: EnrichmentDataGrpc | null;
   processed_at: number;
   next_service: string;
+  routing_decision?: string; // NEW: Routing decision
+  kafka_published?: boolean; // NEW: Kafka publishing status
+  pacs002_published?: boolean; // NEW: PACS.002 response publishing status
+  processing_time_ms?: number; // NEW: Processing time
 }
 
 interface EnrichmentDataGrpc {
@@ -97,8 +101,8 @@ export class InwdProcessorHandler {
   }
 
   /**
-   * Static async factory method to create and initialize EnrichmentHandler
-   * @returns Promise<EnrichmentHandler> - Fully initialized handler instance
+   * Static async factory method to create and initialize InwdProcessorHandler
+   * @returns Promise<InwdProcessorHandler> - Fully initialized handler instance
    * @throws Error if initialization fails
    */
   static async create(): Promise<InwdProcessorHandler> {
@@ -106,15 +110,17 @@ export class InwdProcessorHandler {
       const enrichmentService = await InwdProcessorService.create();
       return new InwdProcessorHandler(enrichmentService);
     } catch (error) {
-      throw new Error(`Failed to initialize EnrichmentHandler: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new Error(`Failed to initialize InwdProcessorHandler: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 
   enrichMessage = async (call: grpc.ServerUnaryCall<EnrichmentGrpcRequest, EnrichmentGrpcResponse>, callback: grpc.sendUnaryData<EnrichmentGrpcResponse>) => {
+    const startTime = Date.now();
+    
     try {
       const request = call.request;
 
-      logger.info('gRPC EnrichMessage request received', {
+      logger.info('gRPC ProcessMessage request received', {
         messageId: request.message_id,
         puid: request.puid,
         messageType: request.message_type
@@ -132,9 +138,10 @@ export class InwdProcessorHandler {
 
       // Call the enrichment service
       const serviceResponse = await this.enrichmentService.enrichMessage(serviceRequest);
+      const processingTime = Date.now() - startTime;
 
       // Convert service response to gRPC response
-      const grpcResponse = {
+      const grpcResponse: EnrichmentGrpcResponse = {
         message_id: serviceResponse.messageId,
         puid: serviceResponse.puid,
         success: serviceResponse.success,
@@ -142,26 +149,37 @@ export class InwdProcessorHandler {
         error_message: serviceResponse.errorMessage || '',
         enrichment_data: serviceResponse.enrichmentData ? this.convertEnrichmentDataToGrpc(serviceResponse.enrichmentData) : null,
         processed_at: serviceResponse.processedAt,
-        next_service: serviceResponse.nextService
+        next_service: serviceResponse.nextService,
+        routing_decision: serviceResponse.routingDecision, // NEW: Include routing decision
+        kafka_published: serviceResponse.kafkaPublished, // NEW: Include Kafka publishing status
+        pacs002_published: serviceResponse.pacs002Published, // NEW: Include PACS.002 response status
+        processing_time_ms: processingTime // NEW: Include processing time
       };
 
-      logger.info('gRPC EnrichMessage response sent', {
+      logger.info('gRPC ProcessMessage response sent', {
         messageId: serviceResponse.messageId,
         success: serviceResponse.success,
-        hasEnrichmentData: !!serviceResponse.enrichmentData
+        hasEnrichmentData: !!serviceResponse.enrichmentData,
+        routingDecision: serviceResponse.routingDecision,
+        kafkaPublished: serviceResponse.kafkaPublished,
+        pacs002Published: serviceResponse.pacs002Published,
+        processingTimeMs: processingTime
       });
 
       callback(null, grpcResponse);
 
     } catch (error) {
-      logger.error('gRPC EnrichMessage error', {
+      const processingTime = Date.now() - startTime;
+      
+      logger.error('gRPC ProcessMessage error', {
         error: error instanceof Error ? error.message : 'Unknown error',
-        stack: error instanceof Error ? error.stack : undefined
+        stack: error instanceof Error ? error.stack : undefined,
+        processingTimeMs: processingTime
       });
 
       callback({
         code: grpc.status.INTERNAL,
-        message: 'Internal server error during enrichment'
+        message: 'Internal server error during message processing'
       });
     }
   };
@@ -255,7 +273,7 @@ export class InwdProcessorHandler {
   }
 
   shutdown(): void {
-    logger.info('Shutting down enrichment handler');
+    logger.info('Shutting down inward processor handler');
     this.enrichmentService.shutdown();
   }
 } 
