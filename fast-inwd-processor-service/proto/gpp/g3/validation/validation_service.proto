@@ -1,0 +1,134 @@
+syntax = "proto3";
+
+package gpp.g3.validation;
+
+option go_package = "github.com/gpp/g3/validation";
+
+// Validation service for PACS message validation and Kafka publishing
+service ValidationService {
+  // Validate an enriched PACS message
+  rpc ValidateEnrichedMessage(ValidateEnrichedMessageRequest) returns (ValidateEnrichedMessageResponse);
+  
+  // Health check
+  rpc HealthCheck(HealthCheckRequest) returns (HealthCheckResponse);
+}
+
+// Request message for validation
+message ValidateEnrichedMessageRequest {
+  string message_id = 1;
+  string puid = 2;
+  string message_type = 3;
+  string enriched_xml_payload = 4;
+  EnrichmentData enrichment_data = 5;
+  int64 timestamp = 6;
+  map<string, string> metadata = 7;
+}
+
+// Response message for validation
+message ValidateEnrichedMessageResponse {
+  string message_id = 1;
+  string puid = 2;
+  bool success = 3;
+  string error_message = 4;
+  ValidationResult validation_result = 5;
+  string json_payload = 6;
+  bool kafka_published = 7;
+  int64 processed_at = 8;
+  string next_service = 9;
+}
+
+// Validation result details
+message ValidationResult {
+  bool is_valid = 1;
+  repeated ValidationError errors = 2;
+  CurrencyValidation currency_validation = 3;
+  CountryValidation country_validation = 4;
+  map<string, string> validation_metadata = 5;
+}
+
+// Validation error details
+message ValidationError {
+  string field = 1;
+  string error_code = 2;
+  string error_message = 3;
+  string severity = 4;
+}
+
+// Currency validation result
+message CurrencyValidation {
+  string currency_code = 1;
+  bool is_valid = 2;
+  string expected_currency = 3;
+  string validation_message = 4;
+}
+
+// Country validation result
+message CountryValidation {
+  string country_code = 1;
+  bool is_valid = 2;
+  string expected_country = 3;
+  string validation_message = 4;
+}
+
+// Enrichment data from previous service
+message EnrichmentData {
+  string received_acct_id = 1;
+  int32 lookup_status_code = 2;
+  string lookup_status_desc = 3;
+  string normalized_acct_id = 4;
+  string matched_acct_id = 5;
+  string partial_match = 6;
+  string is_physical = 7;
+  PhysicalAcctInfo physical_acct_info = 8;
+}
+
+// Physical account information
+message PhysicalAcctInfo {
+  string acct_id = 1;
+  string acct_sys = 2;
+  string acct_group = 3;
+  string country = 4;
+  string branch_id = 5;
+  AcctAttributes acct_attributes = 6;
+  AcctOpsAttributes acct_ops_attributes = 7;
+  string bicfi = 8;
+  string currency_code = 9;
+}
+
+// Account attributes
+message AcctAttributes {
+  string acct_type = 1;
+  string acct_category = 2;
+  string acct_purpose = 3;
+}
+
+// Account operational attributes
+message AcctOpsAttributes {
+  bool is_active = 1;
+  string acct_status = 2;
+  string open_date = 3;
+  string expiry_date = 4;
+  AcctRestraints restraints = 5;
+}
+
+// Account restraints
+message AcctRestraints {
+  bool stop_all = 1;
+  bool stop_debits = 2;
+  bool stop_credits = 3;
+  bool stop_atm = 4;
+  bool stop_eft_pos = 5;
+  bool stop_unknown = 6;
+  repeated string warnings = 7;
+}
+
+// Health check request
+message HealthCheckRequest {
+  string service = 1;
+}
+
+// Health check response
+message HealthCheckResponse {
+  int32 status = 1; // 0=UNKNOWN, 1=SERVING, 2=NOT_SERVING, 3=SERVICE_UNKNOWN
+  string message = 2;
+} 

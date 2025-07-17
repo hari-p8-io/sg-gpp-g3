@@ -1,0 +1,25 @@
+{
+  "name": "fast-accounting-service",
+  "version": "1.0.0",
+  "description": "Fast Accounting Service - Node.js implementation for VAM/MDZ orchestration",
+  "main": "accounting-service.js",
+  "scripts": {
+    "start": "node accounting-service.js",
+    "dev": "node accounting-service.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "uuid": "^9.0.1",
+    "kafkajs": "^2.2.4"
+  },
+  "keywords": [
+    "accounting",
+    "orchestration",
+    "microservice",
+    "vam",
+    "mdz"
+  ],
+  "author": "GPPG3 Team",
+  "license": "ISC"
+} 

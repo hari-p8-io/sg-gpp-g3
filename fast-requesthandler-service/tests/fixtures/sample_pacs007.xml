@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Document xmlns="urn:iso:std:iso:20022:tech:xsd:pacs.007.001.02">
+  <FIToFIPmtRvsl>
+    <GrpHdr>
+      <MsgId>REV-SG-001-20231207-001</MsgId>
+      <CreDtTm>2023-12-07T11:00:00+08:00</CreDtTm>
+      <NbOfTxs>1</NbOfTxs>
+    </GrpHdr>
+    <TxInf>
+      <RvslId>RVSL-SG-001</RvslId>
+      <OrgnlGrpInf>
+        <OrgnlMsgId>MSG-SG-001-20231207-001</OrgnlMsgId>
+        <OrgnlMsgNmId>pacs.008.001.02</OrgnlMsgNmId>
+      </OrgnlGrpInf>
+      <OrgnlTxId>TXN-SG-001</OrgnlTxId>
+      <RvslRsnInf>
+        <Rsn>
+          <Cd>AC03</Cd>
+        </Rsn>
+        <AddtlInf>Invalid account number</AddtlInf>
+      </RvslRsnInf>
+      <RtrChain>
+        <RtrId>RTR-SG-001</RtrId>
+        <RtrRsnInf>
+          <Rsn>
+            <Cd>AC03</Cd>
+          </Rsn>
+        </RtrRsnInf>
+      </RtrChain>
+    </TxInf>
+  </FIToFIPmtRvsl>
+</Document> 
