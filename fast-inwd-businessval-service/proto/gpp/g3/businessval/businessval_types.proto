@@ -1,0 +1,92 @@
+syntax = "proto3";
+
+package gpp.g3.businessval;
+
+// Common types and response generation for Business Validation Service
+
+message ResponseGenerationRequest {
+  string message_id = 1;
+  string message_type = 2;
+  ValidationResult validation_result = 3;
+  EnrichmentData enrichment_data = 4;
+  string original_xml = 5;
+}
+
+message ResponseGenerationResponse {
+  bool success = 1;
+  string response_xml = 2;
+  ResponseType response_type = 3;
+  string error_message = 4;
+}
+
+message RestClientRequest {
+  string endpoint = 1;
+  string method = 2;                    // GET, POST, PUT, DELETE
+  map<string, string> headers = 3;
+  string body = 4;
+  int32 timeout_ms = 5;
+}
+
+message RestClientResponse {
+  int32 status_code = 1;
+  string body = 2;
+  map<string, string> headers = 3;
+  bool success = 4;
+  string error_message = 5;
+}
+
+message ReferenceDataRequest {
+  string currency_code = 1;
+  string country_code = 2;
+  string bank_code = 3;
+  string data_type = 4;                 // "currency", "country", "bank"
+}
+
+message ReferenceDataResponse {
+  bool valid = 1;
+  string validation_message = 2;
+  map<string, string> additional_data = 3;
+}
+
+message BusinessRulesRequest {
+  string message_type = 1;
+  string xml_payload = 2;
+  EnrichmentData enrichment_data = 3;
+  map<string, string> business_context = 4;
+}
+
+message BusinessRulesResponse {
+  bool passed = 1;
+  repeated string validation_errors = 2;
+  repeated string warnings = 3;
+  string risk_score = 4;
+  map<string, string> rule_results = 5;
+}
+
+enum ValidationStatus {
+  PENDING = 0;
+  PASSED = 1;
+  FAILED = 2;
+  WARNING = 3;
+  SKIPPED = 4;
+}
+
+enum ProcessingStage {
+  ACCOUNT_LOOKUP = 0;
+  REFERENCE_DATA_CHECK = 1;
+  MANDATE_VALIDATION = 2;
+  BUSINESS_RULES = 3;
+  RESPONSE_GENERATION = 4;
+  COMPLETED = 5;
+}
+
+message ProcessingContext {
+  string message_id = 1;
+  string puid = 2;
+  ProcessingStage current_stage = 3;
+  ValidationStatus status = 4;
+  repeated string errors = 5;
+  repeated string warnings = 6;
+  int64 started_at = 7;
+  int64 updated_at = 8;
+} 

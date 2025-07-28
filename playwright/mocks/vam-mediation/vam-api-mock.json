@@ -1,0 +1,23 @@
+{
+  "request": {
+    "method": "POST",
+    "url": "/api/v1/mediation"
+  },
+  "response": {
+    "status": 200,
+    "jsonBody": {
+      "status": "SUCCESS",
+      "mediationId": "{{randomValue length=8 type='ALPHANUMERIC'}}",
+      "timestamp": "{{now format='yyyy-MM-dd''T''HH:mm:ss.SSSZ'}}",
+      "result": {
+        "accountStatus": "ACTIVE",
+        "accountType": "CURRENT",
+        "currencyCode": "SGD",
+        "customerId": "{{jsonPath request.body '$.messageId'}}"
+      }
+    },
+    "headers": {
+      "Content-Type": "application/json"
+    }
+  }
+} 

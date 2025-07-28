@@ -1,0 +1,32 @@
+{
+  "name": "fast-orchestrator-playwright-tests",
+  "version": "1.0.0",
+  "description": "TypeScript Playwright tests for Fast Inward Orchestrator Service",
+  "scripts": {
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "test:debug": "playwright test --debug",
+    "test:ui": "playwright test --ui",
+    "docker:up": "docker-compose up -d",
+    "docker:down": "docker-compose down",
+    "docker:logs": "docker-compose logs -f",
+    "setup": "npm install && npx playwright install"
+  },
+  "dependencies": {
+    "@playwright/test": "^1.40.0",
+    "kafkajs": "^2.2.4",
+    "axios": "^1.6.2",
+    "uuid": "^9.0.1",
+    "fast-xml-parser": "^4.3.2",
+    "wait-for-expect": "^3.0.2"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.4",
+    "@types/uuid": "^9.0.7",
+    "typescript": "^5.3.3",
+    "ts-node": "^10.9.1"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+} 

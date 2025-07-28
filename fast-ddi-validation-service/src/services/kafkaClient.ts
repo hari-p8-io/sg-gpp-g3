@@ -10,10 +10,12 @@ import { config } from '../config/default';
 export interface KafkaPublishMessage {
   messageId: string;
   puid: string;
+  messageType: string; // Added: Message type for routing
   jsonPayload: any;
   enrichmentData?: any;
   validationResult: any;
   timestamp: number;
+  sourceService: string; // Added: Source service identification
 }
 
 export class KafkaClient {
@@ -28,27 +30,10 @@ export class KafkaClient {
       groupId: config.kafka.groupId,
       topics: {
         validatedMessages: config.kafka.topic
-      },
-      retry: {
-        retries: config.validation.maxRetryAttempts,
-        initialRetryTime: config.validation.retryBackoffMs
-      },
-      producer: {
-        maxInFlightRequests: 1,
-        idempotent: true,
-        transactionTimeout: 30000,
       }
     };
 
     this.producer = new KafkaProducer(kafkaConfig, this.logger);
-  }
-
-  async connect(): Promise<void> {
-    await this.producer.connect();
-  }
-
-  async disconnect(): Promise<void> {
-    await this.producer.disconnect();
   }
 
   async publishValidatedMessage(message: KafkaPublishMessage): Promise<boolean> {
@@ -58,15 +43,16 @@ export class KafkaClient {
         messageId: message.messageId,
         puid: message.puid,
         timestamp: message.timestamp,
-        sourceService: 'fast-validation-service',
+        sourceService: message.sourceService,
         payload: {
           messageId: message.messageId,
           puid: message.puid,
+          messageType: message.messageType,
           jsonPayload: message.jsonPayload,
           enrichmentData: message.enrichmentData,
           validationResult: message.validationResult,
           timestamp: message.timestamp,
-          service: 'fast-validation-service',
+          service: message.sourceService,
           publishedAt: new Date().toISOString()
         }
       };
@@ -76,7 +62,8 @@ export class KafkaClient {
         headers: {
           'messageId': message.messageId,
           'puid': message.puid,
-          'service': 'fast-validation-service',
+          'messageType': message.messageType,
+          'service': message.sourceService,
           'timestamp': message.timestamp.toString()
         }
       });
@@ -84,59 +71,18 @@ export class KafkaClient {
       this.logger.info('Message published to Kafka successfully', {
         messageId: message.messageId,
         puid: message.puid,
+        messageType: message.messageType,
         topic: config.kafka.topic,
         partition: result[0]?.partition,
         offset: result[0]?.offset
       });
 
       return true;
+
     } catch (error) {
       this.logger.error('Failed to publish message to Kafka', {
         messageId: message.messageId,
         puid: message.puid,
-        error: error instanceof Error ? error.message : 'Unknown error'
-      });
-      return false;
-    }
-  }
-
-  async publishBatch(messages: KafkaPublishMessage[]): Promise<boolean> {
-    try {
-      // Convert to FastKafkaMessage format
-      const fastMessages: FastKafkaMessage[] = messages.map(message => ({
-        messageId: message.messageId,
-        puid: message.puid,
-        timestamp: message.timestamp,
-        sourceService: 'fast-validation-service',
-        payload: {
-          messageId: message.messageId,
-          puid: message.puid,
-          jsonPayload: message.jsonPayload,
-          enrichmentData: message.enrichmentData,
-          validationResult: message.validationResult,
-          timestamp: message.timestamp,
-          service: 'fast-validation-service',
-          publishedAt: new Date().toISOString()
-        }
-      }));
-
-      const result = await this.producer.publishBatch(config.kafka.topic, fastMessages, {
-        headers: {
-          'service': 'fast-validation-service'
-        }
-      });
-
-      this.logger.info('Batch published to Kafka successfully', {
-        messageCount: messages.length,
-        topic: config.kafka.topic,
-        partitions: result.map((r: any) => r.partition),
-        offsets: result.map((r: any) => r.offset)
-      });
-
-      return true;
-    } catch (error) {
-      this.logger.error('Failed to publish batch to Kafka', {
-        messageCount: messages.length,
         error: error instanceof Error ? error.message : 'Unknown error'
       });
       return false;
@@ -148,23 +94,53 @@ export class KafkaClient {
       const healthStatus = await this.producer.healthCheck();
       
       if (healthStatus.connected) {
-        return { status: 'HEALTHY', message: 'Kafka connection is healthy' };
+        return {
+          status: 'SERVING',
+          message: 'Kafka client is healthy and connected'
+        };
       } else {
-        return { 
-          status: 'UNHEALTHY', 
-          message: healthStatus.error || 'Kafka connection not healthy' 
+        return {
+          status: 'NOT_SERVING',
+          message: healthStatus.error || 'Kafka client is not connected'
         };
       }
+
     } catch (error) {
       this.logger.error('Kafka health check failed', {
         error: error instanceof Error ? error.message : 'Unknown error'
       });
-      return { 
-        status: 'UNHEALTHY', 
-        message: `Kafka health check failed: ${error instanceof Error ? error.message : 'Unknown error'}` 
+      
+      return {
+        status: 'NOT_SERVING',
+        message: `Kafka health check failed: ${error instanceof Error ? error.message : 'Unknown error'}`
       };
+    }
+  }
+
+  async connect(): Promise<void> {
+    try {
+      await this.producer.connect();
+      this.logger.info('Kafka client connected successfully');
+    } catch (error) {
+      this.logger.error('Failed to connect to Kafka', {
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+      throw error;
+    }
+  }
+
+  async disconnect(): Promise<void> {
+    try {
+      await this.producer.disconnect();
+      this.logger.info('Kafka client disconnected successfully');
+    } catch (error) {
+      this.logger.error('Failed to disconnect from Kafka', {
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+      throw error;
     }
   }
 }
 
+// Export singleton instance
 export const kafkaClient = new KafkaClient(); 

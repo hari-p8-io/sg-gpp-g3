@@ -1,0 +1,48 @@
+[
+  {
+    "httpRequest": {
+      "method": "POST",
+      "path": "/vam/mediation",
+      "headers": {
+        "Content-Type": ["application/json"]
+      }
+    },
+    "httpResponse": {
+      "statusCode": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": {
+        "status": "SUCCESS",
+        "messageId": "${json-unit.any-string}",
+        "mediationResult": "PROCESSED",
+        "timestamp": "${json-unit.any-string}"
+      },
+      "delay": {
+        "timeUnit": "MILLISECONDS",
+        "value": 100
+      }
+    }
+  },
+  {
+    "httpRequest": {
+      "method": "POST",
+      "path": "/vam/mediation/error",
+      "headers": {
+        "Content-Type": ["application/json"]
+      }
+    },
+    "httpResponse": {
+      "statusCode": 500,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": {
+        "status": "ERROR",
+        "messageId": "${json-unit.any-string}",
+        "error": "VAM mediation failed",
+        "timestamp": "${json-unit.any-string}"
+      }
+    }
+  }
+] 
