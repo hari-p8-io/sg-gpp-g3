@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           targetNamespace="urn:iso:std:iso:20022:tech:xsd:pacs.007.001.02"
+           xmlns:pacs="urn:iso:std:iso:20022:tech:xsd:pacs.007.001.02"
+           elementFormDefault="qualified">
+
+  <!-- Document root element -->
+  <xs:element name="Document">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element name="FIToFIPmtRvsl" type="pacs:FIToFIPmtRvsl"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+
+  <!-- FI to FI Payment Reversal -->
+  <xs:complexType name="FIToFIPmtRvsl">
+    <xs:sequence>
+      <xs:element name="GrpHdr" type="pacs:GroupHeader"/>
+      <xs:element name="TxInf" type="pacs:TransactionInfo" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <!-- Group Header -->
+  <xs:complexType name="GroupHeader">
+    <xs:sequence>
+      <xs:element name="MsgId" type="pacs:Max35Text"/>
+      <xs:element name="CreDtTm" type="xs:dateTime"/>
+      <xs:element name="NbOfTxs" type="pacs:Max15NumericText"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <!-- Transaction Information -->
+  <xs:complexType name="TransactionInfo">
+    <xs:sequence>
+      <xs:element name="RvslId" type="pacs:Max35Text"/>
+      <xs:element name="OrgnlGrpInf" type="pacs:OriginalGroupInfo"/>
+      <xs:element name="OrgnlTxId" type="pacs:Max35Text"/>
+      <xs:element name="RvslRsnInf" type="pacs:ReversalReasonInfo"/>
+      <xs:element name="RtrChain" type="pacs:ReturnChain" minOccurs="0"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <!-- Original Group Information -->
+  <xs:complexType name="OriginalGroupInfo">
+    <xs:sequence>
+      <xs:element name="OrgnlMsgId" type="pacs:Max35Text"/>
+      <xs:element name="OrgnlMsgNmId" type="pacs:Max35Text"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <!-- Reversal Reason Information -->
+  <xs:complexType name="ReversalReasonInfo">
+    <xs:sequence>
+      <xs:element name="Rsn" type="pacs:ReasonCode"/>
+      <xs:element name="AddtlInf" type="pacs:Max105Text" minOccurs="0"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <!-- Return Chain -->
+  <xs:complexType name="ReturnChain">
+    <xs:sequence>
+      <xs:element name="RtrId" type="pacs:Max35Text"/>
+      <xs:element name="RtrRsnInf" type="pacs:ReversalReasonInfo"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <!-- Reason Code -->
+  <xs:complexType name="ReasonCode">
+    <xs:sequence>
+      <xs:element name="Cd" type="pacs:ReasonCodeList"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <!-- Singapore-specific reason codes -->
+  <xs:simpleType name="ReasonCodeList">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="AC03"/>  <!-- Invalid Account Number -->
+      <xs:enumeration value="AC04"/>  <!-- Closed Account Number -->
+      <xs:enumeration value="AC06"/>  <!-- Blocked Account -->
+      <xs:enumeration value="AG01"/>  <!-- Transaction Forbidden -->
+      <xs:enumeration value="AG02"/>  <!-- Invalid Bank Operation Code -->
+      <xs:enumeration value="AM01"/>  <!-- Zero Amount -->
+      <xs:enumeration value="AM02"/>  <!-- Not Allowed Amount -->
+      <xs:enumeration value="AM03"/>  <!-- Not Allowed Currency -->
+      <xs:enumeration value="BE01"/>  <!-- Inconsistent With End Customer -->
+      <xs:enumeration value="DUPL"/>  <!-- Duplicate Payment -->
+      <xs:enumeration value="FF01"/>  <!-- Invalid File Format -->
+      <xs:enumeration value="MD01"/>  <!-- No Mandate -->
+      <xs:enumeration value="MD02"/>  <!-- Missing Mandatory Information -->
+      <xs:enumeration value="MD07"/>  <!-- End Customer Deceased -->
+      <xs:enumeration value="MS02"/>  <!-- Not Specified Reason Customer Generated -->
+      <xs:enumeration value="MS03"/>  <!-- Not Specified Reason Agent Generated -->
+      <xs:enumeration value="RF01"/>  <!-- Not Unique Transaction Reference -->
+      <xs:enumeration value="RR01"/>  <!-- Missing Debtor Account Or Identification -->
+      <xs:enumeration value="RR02"/>  <!-- Missing Debtor Name Or Address -->
+      <xs:enumeration value="RR03"/>  <!-- Missing Creditor Name Or Address -->
+      <xs:enumeration value="RR04"/>  <!-- Regulatory Reason -->
+      <xs:enumeration value="TM01"/>  <!-- Cut Off Time -->
+    </xs:restriction>
+  </xs:simpleType>
+
+  <!-- Common simple types -->
+  <xs:simpleType name="Max35Text">
+    <xs:restriction base="xs:string">
+      <xs:maxLength value="35"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="Max105Text">
+    <xs:restriction base="xs:string">
+      <xs:maxLength value="105"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="Max15NumericText">
+    <xs:restriction base="xs:string">
+      <xs:pattern value="[0-9]{1,15}"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+</xs:schema> 

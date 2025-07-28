@@ -1,0 +1,151 @@
+version: '3.8'
+
+services:
+  # Zookeeper for Kafka
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.4.0
+    hostname: zookeeper
+    container_name: test-zookeeper
+    ports:
+      - "2181:2181"
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    networks:
+      - test-network
+
+  # Kafka
+  kafka:
+    image: confluentinc/cp-kafka:7.4.0
+    hostname: kafka
+    container_name: test-kafka
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+      - "9101:9101"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: 'zookeeper:2181'
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_JMX_PORT: 9101
+      KAFKA_JMX_HOSTNAME: localhost
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
+    networks:
+      - test-network
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-broker-api-versions --bootstrap-server localhost:9092"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # Google Cloud Spanner Emulator
+  spanner-emulator:
+    image: gcr.io/cloud-spanner-emulator/emulator:latest
+    hostname: spanner-emulator
+    container_name: test-spanner-emulator
+    ports:
+      - "9010:9010"
+      - "9020:9020"
+    environment:
+      - SPANNER_EMULATOR_HOST=0.0.0.0:9010
+    networks:
+      - test-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9020 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # VAM Mediation Mock Service
+  vam-mediation-mock:
+    image: mockserver/mockserver:5.15.0
+    hostname: vam-mediation-mock
+    container_name: test-vam-mediation-mock
+    ports:
+      - "1080:1080"
+    environment:
+      MOCKSERVER_PROPERTY_FILE: /config/mockserver.properties
+      MOCKSERVER_INITIALIZATION_JSON_PATH: /config/expectations.json
+    volumes:
+      - ./test-infrastructure/vam-mock:/config
+    networks:
+      - test-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:1080/mockserver/status || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # Kafka Topics Creator (runs once to create topics)
+  kafka-setup:
+    image: confluentinc/cp-kafka:7.4.0
+    hostname: kafka-setup
+    container_name: test-kafka-setup
+    depends_on:
+      kafka:
+        condition: service_healthy
+    command: |
+      bash -c '
+        echo "Creating Kafka topics..."
+        kafka-topics --create --if-not-exists --bootstrap-server kafka:29092 --partitions 3 --replication-factor 1 --topic enriched-messages
+        kafka-topics --create --if-not-exists --bootstrap-server kafka:29092 --partitions 3 --replication-factor 1 --topic json-accounting-messages
+        kafka-topics --create --if-not-exists --bootstrap-server kafka:29092 --partitions 3 --replication-factor 1 --topic json-vammediation-messages
+        kafka-topics --create --if-not-exists --bootstrap-server kafka:29092 --partitions 3 --replication-factor 1 --topic json-limitcheck-messages
+        kafka-topics --create --if-not-exists --bootstrap-server kafka:29092 --partitions 3 --replication-factor 1 --topic accounting-response-messages
+        kafka-topics --create --if-not-exists --bootstrap-server kafka:29092 --partitions 3 --replication-factor 1 --topic vammediation-response-messages
+        kafka-topics --create --if-not-exists --bootstrap-server kafka:29092 --partitions 3 --replication-factor 1 --topic limitcheck-response-messages
+        echo "Topics created successfully"
+      '
+    networks:
+      - test-network
+
+  # Fast Inward Orchestrator Service
+  orchestrator-service:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    hostname: orchestrator-service
+    container_name: test-orchestrator-service
+    depends_on:
+      kafka:
+        condition: service_healthy
+      spanner-emulator:
+        condition: service_healthy
+      kafka-setup:
+        condition: service_completed_successfully
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_PROFILES_ACTIVE: test
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      KAFKA_CONSUMER_GROUP_ID: fast-inwd-orchestrator-test-group
+      GCP_PROJECT_ID: test-project
+      SPANNER_INSTANCE_ID: test-instance
+      SPANNER_DATABASE_ID: test-orchestrator-db
+      SPANNER_EMULATOR_HOST: spanner-emulator:9010
+      KAFKA_TOPIC_ENRICHED_MESSAGES: enriched-messages
+      KAFKA_TOPIC_ACCOUNTING: json-accounting-messages
+      KAFKA_TOPIC_VAM_MEDIATION: json-vammediation-messages
+      KAFKA_TOPIC_LIMIT_CHECK: json-limitcheck-messages
+      KAFKA_TOPIC_ACCOUNTING_RESPONSES: accounting-response-messages
+      KAFKA_TOPIC_VAM_MEDIATION_RESPONSES: vammediation-response-messages
+      KAFKA_TOPIC_LIMIT_CHECK_RESPONSES: limitcheck-response-messages
+      LOG_LEVEL: DEBUG
+    networks:
+      - test-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/api/v1/orchestrator/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
+
+networks:
+  test-network:
+    driver: bridge 

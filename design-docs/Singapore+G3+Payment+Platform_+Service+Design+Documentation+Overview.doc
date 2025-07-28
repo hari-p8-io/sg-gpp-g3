@@ -1,0 +1,1181 @@
+Date: Wed, 16 Jul 2025 14:03:41 +0000 (UTC)
+Message-ID: <899773525.53.1752674621395@c803c03e3741>
+Subject: Exported From Confluence
+MIME-Version: 1.0
+Content-Type: multipart/related; 
+	boundary="----=_Part_52_1461900633.1752674621394"
+
+------=_Part_52_1461900633.1752674621394
+Content-Type: text/html; charset=UTF-8
+Content-Transfer-Encoding: quoted-printable
+Content-Location: file:///C:/exported.html
+
+<html xmlns:o=3D'urn:schemas-microsoft-com:office:office'
+      xmlns:w=3D'urn:schemas-microsoft-com:office:word'
+      xmlns:v=3D'urn:schemas-microsoft-com:vml'
+      xmlns=3D'urn:w3-org-ns:HTML'>
+<head>
+    <meta http-equiv=3D"Content-Type" content=3D"text/html; charset=3Dutf-8=
+">
+    <title>Singapore G3 Payment Platform: Service Design Documentation Over=
+view</title>
+    <!--[if gte mso 9]>
+    <xml>
+        <o:OfficeDocumentSettings>
+            <o:TargetScreenSize>1024x640</o:TargetScreenSize>
+            <o:PixelsPerInch>72</o:PixelsPerInch>
+            <o:AllowPNG/>
+        </o:OfficeDocumentSettings>
+        <w:WordDocument>
+            <w:View>Print</w:View>
+            <w:Zoom>90</w:Zoom>
+            <w:DoNotOptimizeForBrowser/>
+        </w:WordDocument>
+    </xml>
+    <![endif]-->
+    <style>
+                <!--
+        @page Section1 {
+            size: 8.5in 11.0in;
+            margin: 1.0in;
+            mso-header-margin: .5in;
+            mso-footer-margin: .5in;
+            mso-paper-source: 0;
+        }
+
+        table {
+            border: solid 1px;
+            border-collapse: collapse;
+        }
+
+        table td, table th {
+            border: solid 1px;
+            padding: 5px;
+        }
+
+        td {
+            page-break-inside: avoid;
+        }
+
+        tr {
+            page-break-after: avoid;
+        }
+
+        div.Section1 {
+            page: Section1;
+        }
+
+        /* Confluence print stylesheet. Common to all themes for print medi=
+a */
+/* Full of !important until we improve batching for print CSS */
+
+@media print {
+    #main {
+        padding-bottom: 1em !important; /* The default padding of 6em is to=
+o much for printouts */
+    }
+
+    body {
+        font: var(--ds-font-body-small, Arial, Helvetica, FreeSans, sans-se=
+rif);
+    }
+
+    body, #full-height-container, #main, #page, #content, .has-personal-sid=
+ebar #content {
+        background: var(--ds-surface, #fff) !important;
+        color: var(--ds-text, #000) !important;
+        border: 0 !important;
+        width: 100% !important;
+        height: auto !important;
+        min-height: auto !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        display: block !important;
+    }
+
+    a, a:link, a:visited, a:focus, a:hover, a:active {
+        color: var(--ds-text, #000);
+    }
+
+    #content h1,
+    #content h2,
+    #content h3,
+    #content h4,
+    #content h5,
+    #content h6 {
+        page-break-after: avoid;
+    }
+
+    pre {
+        font: var(--ds-font-code, Monaco, "Courier New", monospace);
+    }
+
+    #header,
+    .aui-header-inner,
+    #navigation,
+    #sidebar,
+    .sidebar,
+    #personal-info-sidebar,
+    .ia-fixed-sidebar,
+    .page-actions,
+    .navmenu,
+    .ajs-menu-bar,
+    .noprint,
+    .inline-control-link,
+    .inline-control-link a,
+    a.show-labels-editor,
+    .global-comment-actions,
+    .comment-actions,
+    .quick-comment-container,
+    #addcomment {
+        display: none !important;
+    }
+
+    /* CONF-28544 cannot print multiple pages in IE */
+    #splitter-content {
+        position: relative !important;
+    }
+
+    .comment .date::before {
+        content: none !important; /* remove middot for print view */
+    }
+
+    h1.pagetitle img {
+        height: auto;
+        width: auto;
+    }
+
+    .print-only {
+        display: block;
+    }
+
+    #footer {
+        position: relative !important; /* CONF-17506 Place the footer at en=
+d of the content */
+        margin: 0;
+        padding: 0;
+        background: none;
+        clear: both;
+    }
+
+    #poweredby {
+        border-top: none;
+        background: none;
+    }
+
+    #poweredby li.print-only {
+        display: list-item;
+        font-style: italic;
+    }
+
+    #poweredby li.noprint {
+        display: none;
+    }
+
+    /* no width controls in print */
+    .wiki-content .table-wrap,
+    .wiki-content p,
+    .panel .codeContent,
+    .panel .codeContent pre,
+    .image-wrap {
+        overflow: visible !important;
+    }
+
+    /* TODO - should this work? */
+    #children-section,
+    #comments-section .comment,
+    #comments-section .comment .comment-body,
+    #comments-section .comment .comment-content,
+    #comments-section .comment p {
+        page-break-inside: avoid;
+    }
+
+    #page-children a {
+        text-decoration: none;
+    }
+
+    /**
+     hide twixies
+
+     the specificity here is a hack because print styles
+     are getting loaded before the base styles. */
+    #comments-section.pageSection .section-header,
+    #comments-section.pageSection .section-title,
+    #children-section.pageSection .section-header,
+    #children-section.pageSection .section-title,
+    .children-show-hide {
+        padding-left: 0;
+        margin-left: 0;
+    }
+
+    .children-show-hide.icon {
+        display: none;
+    }
+
+    /* personal sidebar */
+    .has-personal-sidebar #content {
+        margin-right: 0px;
+    }
+
+    .has-personal-sidebar #content .pageSection {
+        margin-right: 0px;
+    }
+
+    .no-print, .no-print * {
+        display: none !important;
+    }
+}
+-->
+    </style>
+</head>
+<body>
+    <h1>Singapore G3 Payment Platform: Service Design Documentation Overvie=
+w</h1>
+    <div class=3D"Section1">
+        <h1 id=3D"SingaporeG3PaymentPlatform:ServiceDesignDocumentationOver=
+view-SingaporeG3PaymentPlatform-ServiceDesignDocumentation">Singapore G3 Pa=
+yment Platform - Service Design Documentation</h1>
+<h2 id=3D"SingaporeG3PaymentPlatform:ServiceDesignDocumentationOverview-Tab=
+leofContents">Table of Contents</h2>
+<ol start=3D"1">
+<li>
+<p><a href=3D"#ddi-validation">Fast DDI Validation Service</a></p></li>
+<li>
+<p><a href=3D"#inwd-processor">Fast Inward Processor Service</a></p></li>
+<li>
+<p><a href=3D"#account-lookup">Fast Account Lookup Service</a></p></li>
+<li>
+<p><a href=3D"#reference-data">Fast Reference Data Service</a></p></li>
+</ol>
+<hr>
+<h2 id=3D"SingaporeG3PaymentPlatform:ServiceDesignDocumentationOverview-Fas=
+tDDIValidationService{#ddi-validation}">Fast DDI Validation Service {#ddi-v=
+alidation}</h2>
+<h3 id=3D"SingaporeG3PaymentPlatform:ServiceDesignDocumentationOverview-Ove=
+rview">Overview</h3>
+<p>The <strong>Fast DDI Validation Service</strong> is a gRPC-based microse=
+rvice responsible for validating enriched PACS messages and publishing them=
+ to Kafka for downstream orchestration in the Singapore G3 Payment Platform=
+.</p>
+<p><strong>Service Details:</strong></p>
+<ul>
+<li>
+<p><strong>Port:</strong> 50053</p></li>
+<li>
+<p><strong>Type:</strong> gRPC Service</p></li>
+<li>
+<p><strong>Package:</strong> <code>gpp.g3.ddivalidation</code></p></li>
+<li>
+<p><strong>Technology:</strong> TypeScript, gRPC, Kafka</p></li>
+</ul>
+<h3 id=3D"SingaporeG3PaymentPlatform:ServiceDesignDocumentationOverview-Key=
+Responsibilities">Key Responsibilities</h3>
+<ul>
+<li>
+<p>Validate enriched payment messages for Singapore market compliance</p></=
+li>
+<li>
+<p>Perform XSD schema validation for PACS messages</p></li>
+<li>
+<p>Currency validation (SGD-specific rules)</p></li>
+<li>
+<p>Country validation (Singapore market compliance)</p></li>
+<li>
+<p>Convert XML to JSON format for downstream processing</p></li>
+<li>
+<p>Publish validated messages to Kafka for orchestration</p></li>
+</ul>
+<h3 id=3D"SingaporeG3PaymentPlatform:ServiceDesignDocumentationOverview-Seq=
+uenceFlow">Sequence Flow</h3>
+<div class=3D"code panel pdl" style=3D"border-width: 1px;">
+<div class=3D"codeContent panelContent pdl">
+<pre class=3D"syntaxhighlighter-pre" data-syntaxhighlighter-params=3D"brush=
+: java; gutter: false; theme: Confluence" data-theme=3D"Confluence">=E2=94=
+=8C=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=
+=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=
+=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=
+=80=E2=94=90    =E2=94=8C=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=
+=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=
+=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=
+=E2=94=80=E2=94=80=E2=94=80=E2=94=90    =E2=94=8C=E2=94=80=E2=94=80=E2=94=
+=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=
+=E2=94=80=E2=94=80=E2=94=90    =E2=94=8C=E2=94=80=E2=94=80=E2=94=80=E2=94=
+=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=
+=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=
+=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=90
+=E2=94=82 fast-inwd-processor     =E2=94=82    =E2=94=82 fast-ddi-validatio=
+n     =E2=94=82    =E2=94=82 Kafka       =E2=94=82    =E2=94=82 fast-orches=
+trator       =E2=94=82
+=E2=94=82 service                 =E2=94=82    =E2=94=82 service           =
+      =E2=94=82    =E2=94=82 Broker      =E2=94=82    =E2=94=82 service    =
+             =E2=94=82
+=E2=94=94=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=
+=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=
+=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=
+=E2=94=80=E2=94=98    =E2=94=94=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=
+=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=
+=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=
+=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=98    =E2=94=94=E2=94=80=E2=94=80=
+=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=
+=94=80=E2=94=80=E2=94=80=E2=94=98    =E2=94=94=E2=94=80=E2=94=80=E2=94=80=
+=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=
+=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=
+=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=98
+              =E2=94=82                              =E2=94=82             =
+           =E2=94=82                        =E2=94=82
+              =E2=94=82 ValidateEnrichedMessage()    =E2=94=82             =
+           =E2=94=82                        =E2=94=82
+              =E2=94=82=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=
+=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=
+=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=
+=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80&gt;=E2=94=82  =
+                      =E2=94=82                        =E2=94=82
+              =E2=94=82                              =E2=94=82 Extract &amp=
+; Validate     =E2=94=82                        =E2=94=82
+              =E2=94=82                              =E2=94=82 =E2=97=84=E2=
+=94=80=E2=94=90 Parse XML          =E2=94=82                        =E2=94=
+=82
+              =E2=94=82                              =E2=94=82   =E2=94=82 =
+Validate SGD       =E2=94=82                        =E2=94=82
+              =E2=94=82                              =E2=94=82   =E2=94=82 =
+Validate SG        =E2=94=82                        =E2=94=82
+              =E2=94=82                              =E2=94=82 =E2=97=84=E2=
+=94=80=E2=94=98 Convert to JSON    =E2=94=82                        =E2=94=
+=82
+              =E2=94=82                              =E2=94=82 Publish vali=
+dated msg  =E2=94=82                        =E2=94=82
+              =E2=94=82                              =E2=94=82=E2=94=80=E2=
+=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=
+=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=
+=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80&gt;=E2=94=82                 =
+       =E2=94=82
+              =E2=94=82 ValidationResponse(success)  =E2=94=82             =
+           =E2=94=82 Consume for orchestration
+              =E2=94=82=E2=97=84=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=
+=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=
+=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=
+=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=
+=82                        =E2=94=82=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=
+=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=
+=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=
+=E2=94=80=E2=94=80&gt;=E2=94=82</pre>
+</div>
+</div>
+<h3 id=3D"SingaporeG3PaymentPlatform:ServiceDesignDocumentationOverview-Cla=
+ssStructure">Class Structure</h3>
+<div class=3D"code panel pdl" style=3D"border-width: 1px;">
+<div class=3D"codeContent panelContent pdl">
+<pre class=3D"syntaxhighlighter-pre" data-syntaxhighlighter-params=3D"brush=
+: java; gutter: false; theme: Confluence" data-theme=3D"Confluence">=E2=94=
+=8C=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=
+=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=
+=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=
+=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=
+=E2=94=90
+=E2=94=82      ValidationHandler          =E2=94=82
+=E2=94=82=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=
+=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=
+=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=
+=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=
+=94=80=E2=94=82
+=E2=94=82 - validationService            =E2=94=82
+=E2=94=82=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=
+=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=
+=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=
+=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=
+=94=80=E2=94=82
+=E2=94=82 + validateEnrichedMessage()    =E2=94=82
+=E2=94=82 + healthCheck()                =E2=94=82
+=E2=94=82 + convertFromGrpc()            =E2=94=82
+=E2=94=94=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=
+=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=
+=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=
+=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=
+=94=80=E2=94=98
+                 =E2=94=82 uses
+                 =E2=96=BC
+=E2=94=8C=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=
+=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=
+=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=
+=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=
+=94=80=E2=94=90
+=E2=94=82     DDIValidationService        =E2=94=82
+=E2=94=82=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=
+=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=
+=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=
+=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=
+=94=80=E2=94=82
+=E2=94=82 + expectedCurrency: string     =E2=94=82
+=E2=94=82 + expectedCountry: string      =E2=94=82
+=E2=94=82 + isTestMode: boolean          =E2=94=82
+=E2=94=82=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=
+=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=
+=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=
+=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=
+=94=80=E2=94=82
+=E2=94=82 + validateEnrichedMessage()    =E2=94=82
+=E2=94=82 + performValidations()         =E2=94=82
+=E2=94=82 + validateCurrency()           =E2=94=82
+=E2=94=82 + validateCountry()            =E2=94=82
+=E2=94=82 + publishToKafka()            =E2=94=82
+=E2=94=94=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=
+=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=
+=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=
+=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=
+=94=80=E2=94=98
+         =E2=94=8C=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=
+=94=80=E2=94=B4=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=
+=80=E2=94=90
+         =E2=94=82               =E2=94=82
+         =E2=96=BC               =E2=96=BC
+=E2=94=8C=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=
+=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=
+=80=E2=94=80=E2=94=90 =E2=94=8C=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=
+=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=
+=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=90
+=E2=94=82   KafkaClient   =E2=94=82 =E2=94=82   XMLParser     =E2=94=82
+=E2=94=82=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=
+=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=
+=80=E2=94=80=E2=94=82 =E2=94=82=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=
+=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=
+=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=82
+=E2=94=82 - producer      =E2=94=82 =E2=94=82                 =E2=94=82
+=E2=94=82=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=
+=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=
+=80=E2=94=80=E2=94=82 =E2=94=82=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=
+=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=
+=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=82
+=E2=94=82 + publish()     =E2=94=82 =E2=94=82 + parseXML()    =E2=94=82
+=E2=94=82 + connect()     =E2=94=82 =E2=94=82 + convertJSON() =E2=94=82
+=E2=94=82 + healthCheck() =E2=94=82 =E2=94=82 + extractFields()=E2=94=82
+=E2=94=94=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=
+=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=
+=80=E2=94=80=E2=94=98 =E2=94=94=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=
+=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=
+=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=98</pre>
+</div>
+</div>
+<h3 id=3D"SingaporeG3PaymentPlatform:ServiceDesignDocumentationOverview-Req=
+uest/ResponseFormats">Request/Response Formats</h3>
+<p><strong>gRPC Service Definition:</strong></p>
+<div class=3D"code panel pdl" style=3D"border-width: 1px;">
+<div class=3D"codeContent panelContent pdl">
+<pre class=3D"syntaxhighlighter-pre" data-syntaxhighlighter-params=3D"brush=
+: java; gutter: false; theme: Confluence" data-theme=3D"Confluence">service=
+ DDIValidationService {
+  rpc ValidateEnrichedMessage(ValidateEnrichedMessageRequest) returns (Vali=
+dationResponse);
+  rpc HealthCheck(HealthCheckRequest) returns (HealthCheckResponse);
+}
+
+message ValidateEnrichedMessageRequest {
+  string message_id =3D 1;
+  string puid =3D 2;
+  string xml_payload =3D 3;
+  EnrichmentData enrichment_data =3D 4;
+  string message_type =3D 5;
+}
+
+message ValidationResponse {
+  bool success =3D 1;
+  repeated string errors =3D 2;
+  string processed_at =3D 3;
+}</pre>
+</div>
+</div>
+<p><strong>Environment Variables:</strong></p>
+<div class=3D"code panel pdl" style=3D"border-width: 1px;">
+<div class=3D"codeContent panelContent pdl">
+<pre class=3D"syntaxhighlighter-pre" data-syntaxhighlighter-params=3D"brush=
+: bash; gutter: false; theme: Confluence" data-theme=3D"Confluence">GRPC_PO=
+RT=3D50053
+KAFKA_BROKERS=3Dlocalhost:9092
+KAFKA_TOPIC_VALIDATED_MESSAGES=3Dvalidated-messages
+EXPECTED_CURRENCY=3DSGD
+EXPECTED_COUNTRY=3DSG
+TEST_MODE=3Dfalse</pre>
+</div>
+</div>
+<hr>
+<h2 id=3D"SingaporeG3PaymentPlatform:ServiceDesignDocumentationOverview-Fas=
+tInwardProcessorService{#inwd-processor}">Fast Inward Processor Service {#i=
+nwd-processor}</h2>
+<h3 id=3D"SingaporeG3PaymentPlatform:ServiceDesignDocumentationOverview-Ove=
+rview.1">Overview</h3>
+<p>The <strong>Fast Inward Processor Service</strong> is the central orches=
+tration hub coordinating account lookup, reference data retrieval, and mess=
+age enrichment for inward payment processing in the Singapore G3 Payment Pl=
+atform.</p>
+<p><strong>Service Details:</strong></p>
+<ul>
+<li>
+<p><strong>Port:</strong> 50052</p></li>
+<li>
+<p><strong>Type:</strong> gRPC Service (Central Hub)</p></li>
+<li>
+<p><strong>Package:</strong> <code>gpp.g3.inwdprocessor</code></p></li>
+<li>
+<p><strong>Role:</strong> Central orchestration for message enrichment</p><=
+/li>
+</ul>
+<h3 id=3D"SingaporeG3PaymentPlatform:ServiceDesignDocumentationOverview-Key=
+Responsibilities.1">Key Responsibilities</h3>
+<ul>
+<li>
+<p>Orchestrate account lookup and reference data retrieval</p></li>
+<li>
+<p>Enrich PACS messages with account information and authentication methods=
+</p></li>
+<li>
+<p>Implement intelligent routing (PACS.003 =E2=86=92 Validation, PACS.008/0=
+07 =E2=86=92 Direct Kafka)</p></li>
+<li>
+<p>Coordinate with multiple downstream services</p></li>
+<li>
+<p>Manage message transformation and enrichment workflows</p></li>
+</ul>
+<h3 id=3D"SingaporeG3PaymentPlatform:ServiceDesignDocumentationOverview-Seq=
+uenceFlow.1">Sequence Flow</h3>
+<div class=3D"code panel pdl" style=3D"border-width: 1px;">
+<div class=3D"codeContent panelContent pdl">
+<pre class=3D"syntaxhighlighter-pre" data-syntaxhighlighter-params=3D"brush=
+: java; gutter: false; theme: Confluence" data-theme=3D"Confluence">=E2=94=
+=8C=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=
+=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=90  =E2=94=8C=E2=94=80=
+=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=
+=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=90  =E2=94=8C=E2=94=80=E2=94=80=E2=
+=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=
+=80=E2=94=80=E2=94=80=E2=94=90  =E2=94=8C=E2=94=80=E2=94=80=E2=94=80=E2=94=
+=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=
+=E2=94=80=E2=94=90  =E2=94=8C=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=
+=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=
+=94=90  =E2=94=8C=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=
+=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=90
+=E2=94=82RequestHandler=E2=94=82  =E2=94=82InwdProcessor=E2=94=82  =E2=94=
+=82AccountLookup=E2=94=82  =E2=94=82ReferenceData=E2=94=82  =E2=94=82DDIVal=
+idation=E2=94=82  =E2=94=82Kafka/Direct =E2=94=82
+=E2=94=94=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=
+=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=98  =E2=94=94=E2=
+=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=
+=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=98  =E2=94=94=E2=94=80=E2=94=
+=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=
+=E2=94=80=E2=94=80=E2=94=80=E2=94=98  =E2=94=94=E2=94=80=E2=94=80=E2=94=80=
+=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=
+=94=80=E2=94=80=E2=94=98  =E2=94=94=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=
+=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=
+=80=E2=94=98  =E2=94=94=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=
+=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=98
+       =E2=94=82                =E2=94=82                =E2=94=82         =
+       =E2=94=82                =E2=94=82                =E2=94=82
+       =E2=94=82 ProcessMsg()   =E2=94=82                =E2=94=82         =
+       =E2=94=82                =E2=94=82                =E2=94=82
+       =E2=94=82=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=
+=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=
+=80&gt;=E2=94=82                =E2=94=82                =E2=94=82         =
+       =E2=94=82                =E2=94=82
+       =E2=94=82                =E2=94=82 LookupAccount()=E2=94=82         =
+       =E2=94=82                =E2=94=82                =E2=94=82
+       =E2=94=82                =E2=94=82=E2=94=80=E2=94=80=E2=94=80=E2=94=
+=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=
+=E2=94=80=E2=94=80=E2=94=80&gt;=E2=94=82                =E2=94=82          =
+      =E2=94=82                =E2=94=82
+       =E2=94=82                =E2=94=82 AccountData    =E2=94=82         =
+       =E2=94=82                =E2=94=82                =E2=94=82
+       =E2=94=82                =E2=94=82&lt;=E2=94=80=E2=94=80=E2=94=80=E2=
+=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=
+=80=E2=94=80=E2=94=80=E2=94=80=E2=94=82                =E2=94=82           =
+     =E2=94=82                =E2=94=82
+       =E2=94=82                =E2=94=82                =E2=94=82 LookupAu=
+th()   =E2=94=82                =E2=94=82                =E2=94=82
+       =E2=94=82                =E2=94=82                =E2=94=82=E2=94=80=
+=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=
+=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80&gt;=E2=94=82           =
+     =E2=94=82                =E2=94=82
+       =E2=94=82                =E2=94=82                =E2=94=82 AuthMeth=
+od     =E2=94=82                =E2=94=82                =E2=94=82
+       =E2=94=82                =E2=94=82                =E2=94=82&lt;=E2=
+=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=
+=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=82         =
+       =E2=94=82                =E2=94=82
+       =E2=94=82                =E2=94=82                =E2=94=82         =
+       =E2=94=82                =E2=94=82                =E2=94=82
+       =E2=94=82                =E2=94=82 Route Decision (PACS.003 =E2=86=
+=92 Validation, PACS.008/007 =E2=86=92 Direct)   =E2=94=82
+       =E2=94=82                =E2=94=82 =E2=97=84=E2=94=80=E2=94=90 Enric=
+h XML =E2=94=82                =E2=94=82                =E2=94=82          =
+      =E2=94=82
+       =E2=94=82                =E2=94=82 =E2=97=84=E2=94=80=E2=94=98      =
+      =E2=94=82                =E2=94=82                =E2=94=82          =
+      =E2=94=82
+       =E2=94=82                =E2=94=82                =E2=94=82         =
+       =E2=94=82 Validate()     =E2=94=82                =E2=94=82
+       =E2=94=82                =E2=94=82                =E2=94=82         =
+       =E2=94=82=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=
+=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=
+=80&gt;=E2=94=82   OR Direct    =E2=94=82
+       =E2=94=82                =E2=94=82                =E2=94=82         =
+       =E2=94=82                =E2=94=82   Publish      =E2=94=82
+       =E2=94=82                =E2=94=82                =E2=94=82         =
+       =E2=94=82                =E2=94=82=E2=94=80=E2=94=80=E2=94=80=E2=94=
+=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=
+=E2=94=80=E2=94=80&gt; =E2=94=82
+       =E2=94=82 Response       =E2=94=82                =E2=94=82         =
+       =E2=94=82                =E2=94=82                =E2=94=82
+       =E2=94=82&lt;=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=
+=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=
+=94=80=E2=94=82                =E2=94=82                =E2=94=82          =
+      =E2=94=82                =E2=94=82</pre>
+</div>
+</div>
+<h3 id=3D"SingaporeG3PaymentPlatform:ServiceDesignDocumentationOverview-Rou=
+tingLogic">Routing Logic</h3>
+<div class=3D"table-wrap">
+<table data-table-width=3D"760" data-layout=3D"default" data-local-id=3D"00=
+9cc13c-efc5-4980-a4f9-6648fb6702b9" class=3D"confluenceTable">
+<tbody>
+<tr>
+<th class=3D"confluenceTh">
+<p>Message Type</p></th>
+<th class=3D"confluenceTh">
+<p>Routing Decision</p></th>
+<th class=3D"confluenceTh">
+<p>Destination</p></th>
+</tr>
+<tr>
+<td class=3D"confluenceTd">
+<p>PACS.003</p></td>
+<td class=3D"confluenceTd">
+<p>Via Validation Service</p></td>
+<td class=3D"confluenceTd">
+<p>fast-ddi-validation-service =E2=86=92 Kafka</p></td>
+</tr>
+<tr>
+<td class=3D"confluenceTd">
+<p>PACS.008</p></td>
+<td class=3D"confluenceTd">
+<p>Direct to Kafka</p></td>
+<td class=3D"confluenceTd">
+<p>enriched-messages topic</p></td>
+</tr>
+<tr>
+<td class=3D"confluenceTd">
+<p>PACS.007</p></td>
+<td class=3D"confluenceTd">
+<p>Direct to Kafka</p></td>
+<td class=3D"confluenceTd">
+<p>enriched-messages topic</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<h3 id=3D"SingaporeG3PaymentPlatform:ServiceDesignDocumentationOverview-Env=
+ironmentVariables">Environment Variables</h3>
+<div class=3D"code panel pdl" style=3D"border-width: 1px;">
+<div class=3D"codeContent panelContent pdl">
+<pre class=3D"syntaxhighlighter-pre" data-syntaxhighlighter-params=3D"brush=
+: bash; gutter: false; theme: Confluence" data-theme=3D"Confluence">GRPC_PO=
+RT=3D50052
+ACCOUNT_LOOKUP_SERVICE_URL=3Dlocalhost:50059
+REFERENCE_DATA_SERVICE_URL=3Dlocalhost:50060
+VALIDATION_SERVICE_URL=3Dlocalhost:50053
+KAFKA_BROKERS=3Dlocalhost:9092
+KAFKA_TOPIC_ENRICHED_MESSAGES=3Denriched-messages
+USE_MOCK_MODE=3Dtrue</pre>
+</div>
+</div>
+<hr>
+<h2 id=3D"SingaporeG3PaymentPlatform:ServiceDesignDocumentationOverview-Fas=
+tAccountLookupService{#account-lookup}">Fast Account Lookup Service {#accou=
+nt-lookup}</h2>
+<h3 id=3D"SingaporeG3PaymentPlatform:ServiceDesignDocumentationOverview-Ove=
+rview.2">Overview</h3>
+<p>The <strong>Fast Account Lookup Service</strong> provides account lookup=
+ and enrichment capabilities, determining account systems (VAM/MDZ) and pro=
+viding comprehensive account data for PACS message processing.</p>
+<p><strong>Service Details:</strong></p>
+<ul>
+<li>
+<p><strong>Port:</strong> 50059</p></li>
+<li>
+<p><strong>Type:</strong> gRPC Service</p></li>
+<li>
+<p><strong>Package:</strong> <code>gpp.g3.accountlookup</code></p></li>
+<li>
+<p><strong>Implementation:</strong> Currently stubbed with intelligent mock=
+ data</p></li>
+</ul>
+<h3 id=3D"SingaporeG3PaymentPlatform:ServiceDesignDocumentationOverview-Key=
+Responsibilities.2">Key Responsibilities</h3>
+<ul>
+<li>
+<p>Lookup account information based on creditor account IDs</p></li>
+<li>
+<p>Determine account system (VAM, MDZ, MEPS, FAST) based on account pattern=
+s</p></li>
+<li>
+<p>Provide comprehensive account enrichment data</p></li>
+<li>
+<p>Support Singapore banking standards and compliance</p></li>
+<li>
+<p>Generate realistic mock data for development and testing</p></li>
+</ul>
+<h3 id=3D"SingaporeG3PaymentPlatform:ServiceDesignDocumentationOverview-Seq=
+uenceFlow.2">Sequence Flow</h3>
+<div class=3D"code panel pdl" style=3D"border-width: 1px;">
+<div class=3D"codeContent panelContent pdl">
+<pre class=3D"syntaxhighlighter-pre" data-syntaxhighlighter-params=3D"brush=
+: java; gutter: false; theme: Confluence" data-theme=3D"Confluence">=E2=94=
+=8C=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=
+=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=
+=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=
+=80=E2=94=90    =E2=94=8C=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=
+=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=
+=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=
+=E2=94=80=E2=94=80=E2=94=80=E2=94=90    =E2=94=8C=E2=94=80=E2=94=80=E2=94=
+=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=
+=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=
+=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=90
+=E2=94=82 fast-inwd-processor     =E2=94=82    =E2=94=82 fast-accountlookup=
+      =E2=94=82    =E2=94=82 Mock Data Generator     =E2=94=82
+=E2=94=82 service                 =E2=94=82    =E2=94=82 service           =
+      =E2=94=82    =E2=94=82 (Current Implementation)=E2=94=82
+=E2=94=94=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=
+=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=
+=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=
+=E2=94=80=E2=94=98    =E2=94=94=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=
+=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=
+=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=
+=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=98    =E2=94=94=E2=94=80=E2=94=80=
+=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=
+=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=
+=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=98
+              =E2=94=82                              =E2=94=82             =
+                 =E2=94=82
+              =E2=94=82 LookupAccount(cdtrAcctId)    =E2=94=82             =
+                 =E2=94=82
+              =E2=94=82=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=
+=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=
+=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=
+=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80&gt;=E2=94=82  =
+                            =E2=94=82
+              =E2=94=82                              =E2=94=82 Validate Req=
+uest             =E2=94=82
+              =E2=94=82                              =E2=94=82 =E2=97=84=E2=
+=94=80=E2=94=90 Check Account ID         =E2=94=82
+              =E2=94=82                              =E2=94=82 =E2=97=84=E2=
+=94=80=E2=94=98                          =E2=94=82
+              =E2=94=82                              =E2=94=82 Generate Enr=
+ichment Data     =E2=94=82
+              =E2=94=82                              =E2=94=82=E2=94=80=E2=
+=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=
+=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=
+=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=
+=94=80=E2=94=80=E2=94=80&gt;=E2=94=82
+              =E2=94=82                              =E2=94=82 Account Deta=
+ils (VAM/MDZ)    =E2=94=82
+              =E2=94=82                              =E2=94=82=E2=97=84=E2=
+=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=
+=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=
+=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=
+=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=82
+              =E2=94=82                              =E2=94=82 Build Respon=
+se               =E2=94=82
+              =E2=94=82                              =E2=94=82 =E2=97=84=E2=
+=94=80=E2=94=90 Singapore Banking Stds   =E2=94=82
+              =E2=94=82                              =E2=94=82 =E2=97=84=E2=
+=94=80=E2=94=98                          =E2=94=82
+              =E2=94=82 AccountLookupResponse        =E2=94=82             =
+                 =E2=94=82
+              =E2=94=82=E2=97=84=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=
+=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=
+=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=
+=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=
+=82                              =E2=94=82</pre>
+</div>
+</div>
+<h3 id=3D"SingaporeG3PaymentPlatform:ServiceDesignDocumentationOverview-Acc=
+ountSystemDetection">Account System Detection</h3>
+<div class=3D"table-wrap">
+<table data-table-width=3D"760" data-layout=3D"default" data-local-id=3D"14=
+e03734-2020-420b-b3f4-e93cfe5b9fb3" class=3D"confluenceTable">
+<tbody>
+<tr>
+<th class=3D"confluenceTh">
+<p>Account ID Pattern</p></th>
+<th class=3D"confluenceTh">
+<p>Account System</p></th>
+<th class=3D"confluenceTh">
+<p>Example</p></th>
+</tr>
+<tr>
+<td class=3D"confluenceTd">
+<p>10-12 digits</p></td>
+<td class=3D"confluenceTd">
+<p>VAM</p></td>
+<td class=3D"confluenceTd">
+<p>123456789012</p></td>
+</tr>
+<tr>
+<td class=3D"confluenceTd">
+<p>8-9 digits</p></td>
+<td class=3D"confluenceTd">
+<p>MDZ</p></td>
+<td class=3D"confluenceTd">
+<p>12345678</p></td>
+</tr>
+<tr>
+<td class=3D"confluenceTd">
+<p>Starts with "FAST"</p></td>
+<td class=3D"confluenceTd">
+<p>FAST</p></td>
+<td class=3D"confluenceTd">
+<p>FAST123456</p></td>
+</tr>
+<tr>
+<td class=3D"confluenceTd">
+<p>Starts with "MEPS"</p></td>
+<td class=3D"confluenceTd">
+<p>MEPS</p></td>
+<td class=3D"confluenceTd">
+<p>MEPS789012</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<h3 id=3D"SingaporeG3PaymentPlatform:ServiceDesignDocumentationOverview-Moc=
+kDataResponseExample">Mock Data Response Example</h3>
+<div class=3D"code panel pdl" style=3D"border-width: 1px;">
+<div class=3D"codeContent panelContent pdl">
+<pre class=3D"syntaxhighlighter-pre" data-syntaxhighlighter-params=3D"brush=
+: java; gutter: false; theme: Confluence" data-theme=3D"Confluence">{
+  "success": true,
+  "enrichment_data": {
+    "account_system": "VAM",
+    "account_group": "GOVERNMENT",
+    "physical_account_info": {
+      "bank_code": "DBS",
+      "branch_code": "001",
+      "account_currency": "SGD"
+    },
+    "account_attributes": {
+      "is_joint_account": false,
+      "account_status": "ACTIVE",
+      "product_type": "SAVINGS"
+    }
+  }
+}</pre>
+</div>
+</div>
+<hr>
+<h2 id=3D"SingaporeG3PaymentPlatform:ServiceDesignDocumentationOverview-Fas=
+tReferenceDataService{#reference-data}">Fast Reference Data Service {#refer=
+ence-data}</h2>
+<h3 id=3D"SingaporeG3PaymentPlatform:ServiceDesignDocumentationOverview-Ove=
+rview.3">Overview</h3>
+<p>The <strong>Fast Reference Data Service</strong> determines authenticati=
+on methods (GROUPLIMIT, AFPTHENLIMIT, AFPONLY) based on account information=
+ and business rules, enabling intelligent routing and processing decisions.=
+</p>
+<p><strong>Service Details:</strong></p>
+<ul>
+<li>
+<p><strong>Port:</strong> 50060</p></li>
+<li>
+<p><strong>Type:</strong> gRPC Service</p></li>
+<li>
+<p><strong>Package:</strong> <code>gpp.g3.referencedata</code></p></li>
+<li>
+<p><strong>Implementation:</strong> Rule-based authentication method determ=
+ination</p></li>
+</ul>
+<h3 id=3D"SingaporeG3PaymentPlatform:ServiceDesignDocumentationOverview-Key=
+Responsibilities.3">Key Responsibilities</h3>
+<ul>
+<li>
+<p>Determine authentication methods based on account patterns and business =
+rules</p></li>
+<li>
+<p>Provide reference data for risk assessment and limit profiling</p></li>
+<li>
+<p>Support multiple account systems (VAM, MDZ, MEPS, FAST)</p></li>
+<li>
+<p>Generate comprehensive reference data details for downstream processing<=
+/p></li>
+<li>
+<p>Implement Singapore-specific business rules and compliance requirements<=
+/p></li>
+</ul>
+<h3 id=3D"SingaporeG3PaymentPlatform:ServiceDesignDocumentationOverview-Seq=
+uenceFlow.3">Sequence Flow</h3>
+<div class=3D"code panel pdl" style=3D"border-width: 1px;">
+<div class=3D"codeContent panelContent pdl">
+<pre class=3D"syntaxhighlighter-pre" data-syntaxhighlighter-params=3D"brush=
+: java; gutter: false; theme: Confluence" data-theme=3D"Confluence">=E2=94=
+=8C=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=
+=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=
+=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=
+=80=E2=94=90    =E2=94=8C=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=
+=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=
+=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=
+=E2=94=80=E2=94=80=E2=94=80=E2=94=90    =E2=94=8C=E2=94=80=E2=94=80=E2=94=
+=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=
+=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=
+=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=90
+=E2=94=82 fast-inwd-processor     =E2=94=82    =E2=94=82 fast-referencedata=
+      =E2=94=82    =E2=94=82 Business Rules Engine   =E2=94=82
+=E2=94=82 service                 =E2=94=82    =E2=94=82 service           =
+      =E2=94=82    =E2=94=82                         =E2=94=82
+=E2=94=94=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=
+=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=
+=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=
+=E2=94=80=E2=94=98    =E2=94=94=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=
+=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=
+=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=
+=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=98    =E2=94=94=E2=94=80=E2=94=80=
+=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=
+=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=
+=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=98
+              =E2=94=82                              =E2=94=82             =
+                 =E2=94=82
+              =E2=94=82 LookupAuthMethod()           =E2=94=82             =
+                 =E2=94=82
+              =E2=94=82=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=
+=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=
+=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=
+=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80&gt;=E2=94=82  =
+                            =E2=94=82
+              =E2=94=82                              =E2=94=82 Apply Busine=
+ss Rules         =E2=94=82
+              =E2=94=82                              =E2=94=82=E2=94=80=E2=
+=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=
+=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=
+=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=
+=94=80=E2=94=80=E2=94=80&gt;=E2=94=82
+              =E2=94=82                              =E2=94=82 Auth Method =
+Decision         =E2=94=82
+              =E2=94=82                              =E2=94=82=E2=97=84=E2=
+=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=
+=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=
+=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=
+=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=82
+              =E2=94=82                              =E2=94=82 =E2=80=A2 GR=
+OUPLIMIT (VAM/Gov)       =E2=94=82
+              =E2=94=82                              =E2=94=82 =E2=80=A2 AF=
+PTHENLIMIT (Corporate)   =E2=94=82
+              =E2=94=82                              =E2=94=82 =E2=80=A2 AF=
+PONLY (Retail)           =E2=94=82
+              =E2=94=82 AuthMethodResponse           =E2=94=82             =
+                 =E2=94=82
+              =E2=94=82=E2=97=84=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=
+=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=
+=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=
+=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=
+=82                              =E2=94=82</pre>
+</div>
+</div>
+<h3 id=3D"SingaporeG3PaymentPlatform:ServiceDesignDocumentationOverview-Aut=
+henticationMethodRules">Authentication Method Rules</h3>
+<div class=3D"table-wrap">
+<table data-table-width=3D"760" data-layout=3D"default" data-local-id=3D"20=
+2047a8-6dc2-4629-b082-8897a44520fb" class=3D"confluenceTable">
+<tbody>
+<tr>
+<th class=3D"confluenceTh">
+<p>Account Pattern</p></th>
+<th class=3D"confluenceTh">
+<p>Auth Method</p></th>
+<th class=3D"confluenceTh">
+<p>Use Case</p></th>
+</tr>
+<tr>
+<td class=3D"confluenceTd">
+<p>VAM + Government accounts</p></td>
+<td class=3D"confluenceTd">
+<p>GROUPLIMIT</p></td>
+<td class=3D"confluenceTd">
+<p>Government payments, high limits</p></td>
+</tr>
+<tr>
+<td class=3D"confluenceTd">
+<p>Corporate accounts</p></td>
+<td class=3D"confluenceTd">
+<p>AFPTHENLIMIT</p></td>
+<td class=3D"confluenceTd">
+<p>Corporate banking, dual auth</p></td>
+</tr>
+<tr>
+<td class=3D"confluenceTd">
+<p>Retail/Personal accounts</p></td>
+<td class=3D"confluenceTd">
+<p>AFPONLY</p></td>
+<td class=3D"confluenceTd">
+<p>Individual payments, single auth</p></td>
+</tr>
+<tr>
+<td class=3D"confluenceTd">
+<p>Test accounts (000999999999)</p></td>
+<td class=3D"confluenceTd">
+<p>GROUPLIMIT</p></td>
+<td class=3D"confluenceTd">
+<p>Testing and validation</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<h3 id=3D"SingaporeG3PaymentPlatform:ServiceDesignDocumentationOverview-Bus=
+inessRulesImplementation">Business Rules Implementation</h3>
+<div class=3D"code panel pdl" style=3D"border-width: 1px;">
+<div class=3D"codeContent panelContent pdl">
+<pre class=3D"syntaxhighlighter-pre" data-syntaxhighlighter-params=3D"brush=
+: js; gutter: false; theme: Confluence" data-theme=3D"Confluence">// Authen=
+tication Method Determination
+function determineAuthMethod(accountId) {
+  if (accountId.startsWith('000999999999')) return 'GROUPLIMIT'; // Test
+  if (accountId.length =3D=3D=3D 12 &amp;&amp; accountId.startsWith('1')) r=
+eturn 'GROUPLIMIT'; // VAM Gov
+  if (accountId.length =3D=3D=3D 10) return 'AFPTHENLIMIT'; // Corporate
+  if (accountId.length =3D=3D=3D 8) return 'AFPONLY'; // Retail
+  return 'AFPTHENLIMIT'; // Default
+}</pre>
+</div>
+</div>
+<h3 id=3D"SingaporeG3PaymentPlatform:ServiceDesignDocumentationOverview-Env=
+ironmentVariables.1">Environment Variables</h3>
+<div class=3D"code panel pdl" style=3D"border-width: 1px;">
+<div class=3D"codeContent panelContent pdl">
+<pre class=3D"syntaxhighlighter-pre" data-syntaxhighlighter-params=3D"brush=
+: bash; gutter: false; theme: Confluence" data-theme=3D"Confluence">GRPC_PO=
+RT=3D50060
+USE_MOCK_DATA=3Dtrue
+CACHE_TTL_MINUTES=3D60
+SINGAPORE_COMPLIANCE_MODE=3Dtrue
+DEFAULT_AUTH_METHOD=3DAFPTHENLIMIT</pre>
+</div>
+</div>
+<hr>
+<h2 id=3D"SingaporeG3PaymentPlatform:ServiceDesignDocumentationOverview-Ser=
+viceIntegrationOverview">Service Integration Overview</h2>
+<h3 id=3D"SingaporeG3PaymentPlatform:ServiceDesignDocumentationOverview-Arc=
+hitectureSummary">Architecture Summary</h3>
+<div class=3D"code panel pdl" style=3D"border-width: 1px;">
+<div class=3D"codeContent panelContent pdl">
+<pre class=3D"syntaxhighlighter-pre" data-syntaxhighlighter-params=3D"brush=
+: java; gutter: false; theme: Confluence" data-theme=3D"Confluence">=E2=94=
+=8C=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=
+=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=
+=94=80=E2=94=80=E2=94=90    =E2=94=8C=E2=94=80=E2=94=80=E2=94=80=E2=94=80=
+=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=
+=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=90    =E2=94=8C=
+=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=
+=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=
+=80=E2=94=80=E2=94=90
+=E2=94=82 Request Handler  =E2=94=82=E2=94=80=E2=94=80=E2=94=80&gt;=E2=94=
+=82 Inward Processor =E2=94=82=E2=94=80=E2=94=80=E2=94=80&gt;=E2=94=82 Acco=
+unt Lookup   =E2=94=82
+=E2=94=82     Service      =E2=94=82    =E2=94=82     Service      =E2=94=
+=82    =E2=94=82     Service      =E2=94=82
+=E2=94=82   (Port 50051)   =E2=94=82    =E2=94=82   (Port 50052)   =E2=94=
+=82    =E2=94=82   (Port 50059)   =E2=94=82
+=E2=94=94=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=
+=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=
+=80=E2=94=80=E2=94=80=E2=94=98    =E2=94=94=E2=94=80=E2=94=80=E2=94=80=E2=
+=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=
+=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=98    =E2=
+=94=94=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=
+=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=
+=E2=94=80=E2=94=80=E2=94=98
+                                  =E2=94=82                        =E2=94=
+=82
+                                  v                        =E2=94=82
+                        =E2=94=8C=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=
+=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=
+=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=90              =E2=94=
+=82
+                        =E2=94=82 Reference Data   =E2=94=82=E2=97=84=E2=94=
+=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=
+=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=98
+                        =E2=94=82     Service      =E2=94=82
+                        =E2=94=82   (Port 50060)   =E2=94=82
+                        =E2=94=94=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=
+=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=
+=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=98
+                                  =E2=94=82
+                                  v
+                        =E2=94=8C=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=
+=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=
+=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=90    =E2=94=8C=E2=94=
+=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=
+=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=
+=94=80=E2=94=90
+                        =E2=94=82 DDI Validation   =E2=94=82=E2=94=80=E2=94=
+=80=E2=94=80&gt;=E2=94=82 Kafka &amp; Further  =E2=94=82
+                        =E2=94=82     Service      =E2=94=82    =E2=94=82  =
+ Orchestration  =E2=94=82
+                        =E2=94=82   (Port 50053)   =E2=94=82    =E2=94=82  =
+                =E2=94=82
+                        =E2=94=94=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=
+=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=
+=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=98    =E2=94=94=E2=94=
+=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=
+=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=94=80=E2=
+=94=80=E2=94=98</pre>
+</div>
+</div>
+<h3 id=3D"SingaporeG3PaymentPlatform:ServiceDesignDocumentationOverview-Hea=
+lthCheckEndpoints">Health Check Endpoints</h3>
+<p>All services implement gRPC health checks:</p>
+<div class=3D"code panel pdl" style=3D"border-width: 1px;">
+<div class=3D"codeContent panelContent pdl">
+<pre class=3D"syntaxhighlighter-pre" data-syntaxhighlighter-params=3D"brush=
+: bash; gutter: false; theme: Confluence" data-theme=3D"Confluence"># Check=
+ service health
+grpcurl -plaintext localhost:50052 grpc.health.v1.Health/Check
+grpcurl -plaintext localhost:50053 grpc.health.v1.Health/Check
+grpcurl -plaintext localhost:50059 grpc.health.v1.Health/Check
+grpcurl -plaintext localhost:50060 grpc.health.v1.Health/Check</pre>
+</div>
+</div>
+<hr>
+<h2 id=3D"SingaporeG3PaymentPlatform:ServiceDesignDocumentationOverview-Dep=
+loymentConfiguration">Deployment Configuration</h2>
+<h3 id=3D"SingaporeG3PaymentPlatform:ServiceDesignDocumentationOverview-Doc=
+kerComposeServices">Docker Compose Services</h3>
+<div class=3D"code panel pdl" style=3D"border-width: 1px;">
+<div class=3D"codeContent panelContent pdl">
+<pre class=3D"syntaxhighlighter-pre" data-syntaxhighlighter-params=3D"brush=
+: java; gutter: false; theme: Confluence" data-theme=3D"Confluence">service=
+s:
+  fast-inwd-processor:
+    image: fast-inwd-processor:latest
+    ports: ["50052:50052"]
+    environment:
+      - GRPC_PORT=3D50052
+      - ACCOUNT_LOOKUP_SERVICE_URL=3Dfast-accountlookup:50059
+      - REFERENCE_DATA_SERVICE_URL=3Dfast-referencedata:50060
+
+  fast-ddi-validation:
+    image: fast-ddi-validation:latest
+    ports: ["50053:50053"]
+    environment:
+      - GRPC_PORT=3D50053
+      - KAFKA_BROKERS=3Dkafka:9092
+
+  fast-accountlookup:
+    image: fast-accountlookup:latest
+    ports: ["50059:50059"]
+    environment:
+      - GRPC_PORT=3D50059
+      - USE_MOCK_DATA=3Dtrue
+
+  fast-referencedata:
+    image: fast-referencedata:latest
+    ports: ["50060:50060"]
+    environment:
+      - GRPC_PORT=3D50060
+      - USE_MOCK_DATA=3Dtrue</pre>
+</div>
+</div>
+    </div>
+</body>
+</html>
+------=_Part_52_1461900633.1752674621394--

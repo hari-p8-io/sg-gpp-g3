@@ -1,0 +1,44 @@
+{
+  "name": "fast-inwd-businessval-service",
+  "version": "1.0.0",
+  "description": "Business validation service for inward PACS messages with REST API integration and immediate response generation",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "ts-node src/index.ts",
+    "dev:test": "NODE_ENV=test ts-node src/index.ts",
+    "test": "NODE_ENV=test npx playwright test",
+    "test:ui": "NODE_ENV=test npx playwright test --ui",
+    "test:e2e": "NODE_ENV=test npx playwright test",
+    "lint": "eslint src/**/*.ts",
+    "lint:fix": "eslint src/**/*.ts --fix",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@grpc/grpc-js": "^1.9.0",
+    "@grpc/proto-loader": "^0.7.8",
+    "xml2js": "^0.6.0",
+    "libxmljs2": "^0.32.0",
+    "uuid": "^9.0.0",
+    "dotenv": "^16.3.1",
+    "@gpp/pw-core": "^1.0.0",
+    "@gpp/fast-core": "^1.0.0",
+    "axios": "^1.6.0",
+    "node-fetch": "^3.3.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/xml2js": "^0.4.0",
+    "@types/uuid": "^9.0.0",
+    "@playwright/test": "^1.40.0",
+    "typescript": "^5.0.0",
+    "ts-node": "^10.9.0",
+    "eslint": "^8.0.0",
+    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "@typescript-eslint/parser": "^6.0.0"
+  },
+  "keywords": ["microservice", "typescript", "grpc", "rest", "pacs", "business-validation", "singapore"],
+  "author": "GPP G3 Team",
+  "license": "ISC"
+} 

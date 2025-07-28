@@ -1,0 +1,125 @@
+syntax = "proto3";
+
+package gpp.g3.businessval;
+
+service BusinessValService {
+  // Process inward financial message with business validation and immediate response
+  rpc ProcessMessage(BusinessValRequest) returns (BusinessValResponse);
+  
+  // Health check for the business validation service
+  rpc HealthCheck(HealthCheckRequest) returns (HealthCheckResponse);
+}
+
+message BusinessValRequest {
+  string message_id = 1;          // UUID from external client
+  string puid = 2;                // G3I identifier
+  string message_type = 3;        // PACS008, PACS007, PACS003, CAMT053, CAMT054, etc.
+  string xml_payload = 4;         // The original XML payload
+  map<string, string> metadata = 5; // Additional context data (including market info)
+  int64 timestamp = 6;            // Original processing timestamp
+}
+
+message BusinessValResponse {
+  string message_id = 1;               // Echo back the UUID
+  string puid = 2;                     // Echo back the G3I identifier
+  bool success = 3;                    // Whether business validation was successful
+  string response_payload = 4;         // PACS002 (success) or CAMT029 (rejection) response
+  string error_message = 5;            // Error details if success = false
+  EnrichmentData enrichment_data = 6;  // Enrichment data from lookups
+  ValidationResult validation_result = 7; // Business validation result
+  int64 processed_at = 8;              // When processing completed
+  ResponseType response_type = 9;      // Type of response generated
+}
+
+message EnrichmentData {
+  string received_acct_id = 1;         // Original CdtrAcct ID
+  int32 lookup_status_code = 2;        // 200 for success
+  string lookup_status_desc = 3;       // Success description
+  string normalized_acct_id = 4;       // Normalized account ID
+  string matched_acct_id = 5;          // Matched account ID
+  string partial_match = 6;            // Y or N
+  string is_physical = 7;              // Y or N
+  PhysicalAccountInfo physical_acct_info = 8; // Complex account information
+  string auth_method = 9;              // Authentication method (AFPONLY, AFPTHENLIMIT, GROUPLIMIT)
+  ReferenceDataInfo reference_data = 10; // Reference data from REST API
+  MandateInfo mandate_info = 11;       // Mandate information (for PACS003)
+}
+
+message PhysicalAccountInfo {
+  string acct_id = 1;                  // Account ID
+  string acct_sys = 2;                 // Account system (MDZ, MEPS, VAM, etc.)
+  string acct_group = 3;               // Account group (varies by market)
+  string country = 4;                  // Country code (SG, MY, TH, etc.)
+  string branch_id = 5;                // Branch ID (nullable)
+  AccountAttributes acct_attributes = 6;
+  AccountOpsAttributes acct_ops_attributes = 7;
+  string bicfi = 8;                    // Bank identifier (market-specific)
+  string currency_code = 9;            // Currency code (SGD, MYR, THB, USD, EUR, etc.)
+}
+
+message AccountAttributes {
+  string acct_type = 1;                // Account type (Physical)
+  string acct_category = 2;            // Account category
+  string acct_purpose = 3;             // Account purpose
+}
+
+message AccountOpsAttributes {
+  string is_active = 1;                // Yes/No
+  string acct_status = 2;              // Active status
+  string open_date = 3;                // Account opening date
+  string expiry_date = 4;              // Future date in dd/mm/yyyy
+  Restraints restraints = 5;           // Account restraints
+}
+
+message Restraints {
+  string stop_all = 1;                 // N
+  string stop_debits = 2;              // N
+  string stop_credits = 3;             // N
+  string stop_atm = 4;                 // N
+  string stop_eft_pos = 5;             // N
+  string stop_unknown = 6;             // N
+  repeated string warnings = 7;        // Array of warnings
+}
+
+message ReferenceDataInfo {
+  string currency_valid = 1;           // Currency validation result
+  string country_valid = 2;            // Country validation result
+  string bank_code_valid = 3;          // Bank code validation result
+  map<string, string> additional_data = 4; // Additional reference data
+}
+
+message MandateInfo {
+  string mandate_id = 1;               // Mandate identifier
+  string mandate_status = 2;           // Active, Inactive, etc.
+  string mandate_type = 3;             // Direct debit mandate type
+  string max_amount = 4;               // Maximum amount allowed
+  string frequency = 5;                // Payment frequency
+}
+
+message ValidationResult {
+  bool business_rules_passed = 1;      // Overall business validation result
+  repeated string validation_errors = 2; // List of validation errors
+  repeated string warnings = 3;        // List of warnings
+  string risk_score = 4;               // Risk assessment score
+}
+
+enum ResponseType {
+  PACS002_ACCEPTANCE = 0;              // Payment accepted
+  CAMT029_REJECTION = 1;               // Payment rejected
+  ERROR_RESPONSE = 2;                  // Technical error
+}
+
+message HealthCheckRequest {
+  string service = 1;
+}
+
+message HealthCheckResponse {
+  enum ServingStatus {
+    UNKNOWN = 0;
+    SERVING = 1;
+    NOT_SERVING = 2;
+    SERVICE_UNKNOWN = 3;
+  }
+  ServingStatus status = 1;
+  string message = 2;
+} 

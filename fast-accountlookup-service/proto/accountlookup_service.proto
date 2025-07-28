@@ -1,0 +1,65 @@
+syntax = "proto3";
+
+package gpp.g3.accountlookup;
+
+import "enrichment_data.proto";
+
+service AccountLookupService {
+  // Lookup account information and return enrichment data
+  rpc LookupAccount(AccountLookupRequest) returns (AccountLookupResponse);
+  
+  // Health check for the account lookup service
+  rpc HealthCheck(HealthCheckRequest) returns (HealthCheckResponse);
+  
+  // Get service version and capabilities
+  rpc GetServiceInfo(ServiceInfoRequest) returns (ServiceInfoResponse);
+}
+
+message AccountLookupRequest {
+  string message_id = 1;               // UUID for tracking
+  string puid = 2;                     // G3I identifier
+  string cdtr_acct_id = 3;             // CdtrAcct ID to lookup
+  string message_type = 4;             // PACS message type for context
+  map<string, string> metadata = 5;    // Additional lookup context
+  int64 timestamp = 6;                 // Request timestamp
+}
+
+message AccountLookupResponse {
+  string message_id = 1;               // Echo back UUID
+  string puid = 2;                     // Echo back G3I identifier
+  bool success = 3;                    // Whether lookup was successful
+  string error_message = 4;            // Error details if success = false
+  string error_code = 5;               // Categorized error code
+  EnrichmentData enrichment_data = 6;  // Full enrichment data
+  int64 processed_at = 7;              // When lookup completed
+  string lookup_source = 8;            // Source of lookup (STUB, CACHE, DATABASE)
+}
+
+message HealthCheckRequest {
+  string service = 1;
+}
+
+message HealthCheckResponse {
+  enum ServingStatus {
+    UNKNOWN = 0;
+    SERVING = 1;
+    NOT_SERVING = 2;
+    SERVICE_UNKNOWN = 3;
+  }
+  ServingStatus status = 1;
+  string message = 2;
+  int64 timestamp = 3;
+}
+
+message ServiceInfoRequest {
+  string requester = 1;
+}
+
+message ServiceInfoResponse {
+  string service_name = 1;
+  string version = 2;
+  string build_time = 3;
+  repeated string capabilities = 4;
+  bool is_stubbed = 5;
+  string environment = 6;
+} 

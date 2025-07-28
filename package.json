@@ -1,37 +1,60 @@
 {
-  "name": "gpp-g3-monorepo",
+  "name": "gppg3-orchestration-tests",
   "version": "1.0.0",
-  "description": "GPP G3 Initiative - Monorepo for microservices",
+  "description": "Orchestration tests for VAM/MDZ routing in GPP G3",
+  "main": "test-orchestration.js",
   "private": true,
   "workspaces": [
-    "fast-requesthandler-service",
-    "fast-enrichment-service",
-    "fast-validation-service",
-    "fast-orchestrator-service"
+    "pw-core",
+    "fast-core",
+    "fast-inwd-processor-service",
+    "fast-ddi-validation-service",
+    "fast-orchestrator-service",
+    "fast-limitcheck-service",
+    "fast-accounting-service",
+    "fast-vammediation-service",
+    "fast-accountlookup-service",
+    "fast-referencedata-service",
+    "fast-mdzmediation-service"
   ],
   "scripts": {
-    "install:ts-services": "npm install && npm run bootstrap",
-    "bootstrap": "npm install --workspaces",
-    "build": "npm run build --workspaces",
-    "test": "npm run test --workspaces",
-    "dev": "npm run dev --workspaces",
-    "lint": "npm run lint --workspaces",
-    "clean": "npm run clean --workspaces && rm -rf node_modules",
-    "docker:build": "docker-compose -f shared/docker/docker-compose.yml build",
-    "docker:up": "docker-compose -f shared/docker/docker-compose.yml up",
-    "docker:down": "docker-compose -f shared/docker/docker-compose.yml down",
-    "java:build": "mvn clean install",
-    "java:test": "mvn test"
+    "test": "node test-orchestration.js",
+    "start-orchestration": "./start-orchestration-test.sh",
+    "start-orchestration-no-test": "./start-orchestration-test.sh --no-test",
+    "start:fast-inwd-processor": "cd fast-inwd-processor-service && npm run dev",
+    "start:fast-ddi-validation": "cd fast-ddi-validation-service && npm run dev",
+    "start:fast-orchestrator": "cd fast-orchestrator-service && npm run dev",
+    "pw-core:build": "cd pw-core && npm run build",
+    "pw-core:test": "cd pw-core && npm run test",
+    "pw-core:publish": "cd pw-core && npm publish",
+    "fast-core:build": "cd fast-core && npm run build",
+    "fast-core:test": "cd fast-core && npm run test",
+    "fast-core:watch": "cd fast-core && npm run build:watch",
+    "services:install": "npm install --workspaces",
+    "services:build": "npm run build --workspaces",
+    "services:test": "npm run test --workspaces"
+  },
+  "dependencies": {
+    "@grpc/grpc-js": "^1.13.4",
+    "@grpc/proto-loader": "^0.7.15",
+    "axios": "^1.10.0",
+    "fast-xml-parser": "^5.2.5",
+    "kafkajs": "^2.2.4",
+    "uuid": "^9.0.1"
   },
   "devDependencies": {
-    "@types/node": "^20.0.0",
-    "typescript": "^5.0.0",
-    "concurrently": "^8.0.0"
+    "concurrently": "^8.2.0",
+    "npm-run-all": "^4.1.5"
   },
-  "engines": {
-    "node": ">=18.0.0",
-    "npm": ">=9.0.0"
-  },
+  "keywords": [
+    "orchestration",
+    "vam",
+    "mdz",
+    "kafka",
+    "grpc",
+    "singapore",
+    "payments"
+  ],
   "author": "GPP G3 Team",
-  "license": "UNLICENSED"
-} 
+  "license": "ISC"
+}

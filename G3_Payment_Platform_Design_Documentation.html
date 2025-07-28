@@ -1,0 +1,2606 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Singapore G3 Payment Platform - Design Documentation</title>
+    <style>
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            line-height: 1.6; 
+            max-width: 1200px; 
+            margin: 0 auto; 
+            padding: 20px;
+            color: #333;
+        }
+        h1 { 
+            color: #0747A6; 
+            border-bottom: 3px solid #0747A6; 
+            padding-bottom: 10px;
+            page-break-before: always;
+        }
+        h2 { 
+            color: #172B4D; 
+            border-bottom: 2px solid #DFE1E6; 
+            padding-bottom: 5px;
+            margin-top: 30px;
+        }
+        h3 { 
+            color: #42526E; 
+            margin-top: 25px;
+        }
+        code { 
+            background-color: #F4F5F7; 
+            padding: 2px 4px; 
+            border-radius: 3px;
+            font-family: 'Monaco', 'Menlo', monospace;
+        }
+        pre { 
+            background-color: #F4F5F7; 
+            padding: 15px; 
+            border-radius: 5px; 
+            overflow-x: auto;
+            border-left: 4px solid #0747A6;
+        }
+        table { 
+            border-collapse: collapse; 
+            width: 100%; 
+            margin: 15px 0;
+        }
+        th, td { 
+            border: 1px solid #DFE1E6; 
+            padding: 12px; 
+            text-align: left; 
+        }
+        th { 
+            background-color: #F4F5F7; 
+            font-weight: bold;
+        }
+        ul, ol { 
+            margin: 10px 0; 
+            padding-left: 30px;
+        }
+        .service-section {
+            page-break-before: always;
+            margin-top: 40px;
+        }
+        .toc {
+            background-color: #F4F5F7;
+            padding: 20px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        .note {
+            background-color: #FFF9C4;
+            border-left: 4px solid #FFCC02;
+            padding: 10px;
+            margin: 15px 0;
+        }
+    </style>
+</head>
+<body>
+
+    <h1 style="text-align: center; page-break-before: auto;">
+        Singapore G3 Payment Platform<br>
+        Service Design Documentation
+    </h1>
+    
+    <div class="toc">
+        <h2>Table of Contents</h2>
+        <ol>
+            <li><a href="#ddi-validation">Fast DDI Validation Service</a></li>
+            <li><a href="#inwd-processor">Fast Inward Processor Service</a></li>
+            <li><a href="#account-lookup">Fast Account Lookup Service</a></li>
+            <li><a href="#reference-data">Fast Reference Data Service</a></li>
+        </ol>
+    </div>
+    
+<div class="service-section" id="ddi-validation">
+<h1 id="fast-ddi-validation-service-design-document">Fast DDI Validation Service - Design Document</h1>
+<h2 id="overview">Overview</h2>
+<p>The <strong>Fast DDI Validation Service</strong> is a gRPC-based microservice responsible for validating enriched PACS messages and publishing them to Kafka for downstream orchestration. It serves as the bridge between synchronous gRPC processing and asynchronous Kafka-based orchestration in the Singapore G3 Payment Platform.</p>
+<h3 id="key-responsibilities">Key Responsibilities</h3>
+<ul>
+<li>Validate enriched payment messages for Singapore market compliance</li>
+<li>Perform XSD schema validation for PACS messages</li>
+<li>Currency validation (SGD-specific rules)</li>
+<li>Country validation (Singapore market compliance)</li>
+<li>Convert XML to JSON format for downstream processing</li>
+<li>Publish validated messages to Kafka for orchestration</li>
+</ul>
+<h3 id="service-details">Service Details</h3>
+<ul>
+<li><strong>Service Type</strong>: gRPC Service</li>
+<li><strong>Port</strong>: 50053</li>
+<li><strong>Package</strong>: <code>gpp.g3.ddivalidation</code></li>
+<li><strong>Technology Stack</strong>: TypeScript, gRPC, Kafka</li>
+<li><strong>Environment</strong>: Singapore G3 Payment Platform</li>
+</ul>
+<hr />
+<h2 id="sequence-diagram">Sequence Diagram</h2>
+<pre class="codehilite"><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;mxfile host=&quot;app.diagrams.net&quot; modified=&quot;2024-01-01T00:00:00.000Z&quot; agent=&quot;5.0&quot; version=&quot;24.7.17&quot; etag=&quot;draw.io-diagram&quot; type=&quot;device&quot;&gt;
+  &lt;diagram name=&quot;DDI Validation Sequence&quot; id=&quot;ddi-validation-sequence&quot;&gt;
+    &lt;mxGraphModel dx=&quot;1422&quot; dy=&quot;794&quot; grid=&quot;1&quot; gridSize=&quot;10&quot; guides=&quot;1&quot; tooltips=&quot;1&quot; connect=&quot;1&quot; arrows=&quot;1&quot; fold=&quot;1&quot; page=&quot;1&quot; pageScale=&quot;1&quot; pageWidth=&quot;1169&quot; pageHeight=&quot;827&quot; math=&quot;0&quot; shadow=&quot;0&quot;&gt;
+      &lt;root&gt;
+        &lt;mxCell id=&quot;0&quot; /&gt;
+        &lt;mxCell id=&quot;1&quot; parent=&quot;0&quot; /&gt;
+        &lt;!-- Participants --&gt;
+        &lt;mxCell id=&quot;client&quot; value=&quot;fast-inwd-processor-service&quot; style=&quot;shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=1;collapsible=0;recursiveResize=0;outlineConnect=0;&quot; vertex=&quot;1&quot; parent=&quot;1&quot;&gt;
+          &lt;mxGeometry x=&quot;80&quot; y=&quot;80&quot; width=&quot;180&quot; height=&quot;500&quot; as=&quot;geometry&quot; /&gt;
+        &lt;/mxCell&gt;
+        &lt;mxCell id=&quot;ddi&quot; value=&quot;fast-ddi-validation-service&quot; style=&quot;shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=1;collapsible=0;recursiveResize=0;outlineConnect=0;&quot; vertex=&quot;1&quot; parent=&quot;1&quot;&gt;
+          &lt;mxGeometry x=&quot;320&quot; y=&quot;80&quot; width=&quot;180&quot; height=&quot;500&quot; as=&quot;geometry&quot; /&gt;
+        &lt;/mxCell&gt;
+        &lt;mxCell id=&quot;kafka&quot; value=&quot;Kafka Broker&quot; style=&quot;shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=1;collapsible=0;recursiveResize=0;outlineConnect=0;&quot; vertex=&quot;1&quot; parent=&quot;1&quot;&gt;
+          &lt;mxGeometry x=&quot;560&quot; y=&quot;80&quot; width=&quot;120&quot; height=&quot;500&quot; as=&quot;geometry&quot; /&gt;
+        &lt;/mxCell&gt;
+        &lt;mxCell id=&quot;orch&quot; value=&quot;fast-orchestrator-service&quot; style=&quot;shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=1;collapsible=0;recursiveResize=0;outlineConnect=0;&quot; vertex=&quot;1&quot; parent=&quot;1&quot;&gt;
+          &lt;mxGeometry x=&quot;720&quot; y=&quot;80&quot; width=&quot;160&quot; height=&quot;500&quot; as=&quot;geometry&quot; /&gt;
+        &lt;/mxCell&gt;
+        &lt;!-- Messages --&gt;
+        &lt;mxCell id=&quot;msg1&quot; value=&quot;ValidateEnrichedMessage(request)&quot; style=&quot;html=1;verticalAlign=bottom;startArrow=oval;endArrow=block;startSize=8;curved=0;rounded=0;&quot; edge=&quot;1&quot; parent=&quot;1&quot;&gt;
+          &lt;mxGeometry width=&quot;80&quot; relative=&quot;1&quot; as=&quot;geometry&quot;&gt;
+            &lt;mxPoint x=&quot;170&quot; y=&quot;160&quot; as=&quot;sourcePoint&quot; /&gt;
+            &lt;mxPoint x=&quot;410&quot; y=&quot;160&quot; as=&quot;targetPoint&quot; /&gt;
+          &lt;/mxGeometry&gt;
+        &lt;/mxCell&gt;
+        &lt;mxCell id=&quot;note1&quot; value=&quot;Extract message data&quot; style=&quot;shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;fontColor=#000000;darkOpacity=0.05;fillColor=#FFF9B2;strokeColor=none;fillStyle=solid;direction=west;gradientDirection=north;gradientColor=#FFF2A1;shadow=1;size=20;&quot; vertex=&quot;1&quot; parent=&quot;1&quot;&gt;
+          &lt;mxGeometry x=&quot;440&quot; y=&quot;180&quot; width=&quot;120&quot; height=&quot;40&quot; as=&quot;geometry&quot; /&gt;
+        &lt;/mxCell&gt;
+        &lt;!-- Self-calls for validation steps --&gt;
+        &lt;mxCell id=&quot;parse&quot; value=&quot;Parse XML payload&quot; style=&quot;html=1;verticalAlign=bottom;startArrow=oval;endArrow=block;startSize=8;curved=0;rounded=0;&quot; edge=&quot;1&quot; parent=&quot;1&quot;&gt;
+          &lt;mxGeometry width=&quot;80&quot; relative=&quot;1&quot; as=&quot;geometry&quot;&gt;
+            &lt;mxPoint x=&quot;410&quot; y=&quot;240&quot; as=&quot;sourcePoint&quot; /&gt;
+            &lt;mxPoint x=&quot;450&quot; y=&quot;240&quot; as=&quot;targetPoint&quot; /&gt;
+          &lt;/mxGeometry&gt;
+        &lt;/mxCell&gt;
+        &lt;!-- Success and error flows --&gt;
+        &lt;mxCell id=&quot;publishKafka&quot; value=&quot;Publish to validated-messages topic&quot; style=&quot;html=1;verticalAlign=bottom;startArrow=oval;endArrow=block;startSize=8;curved=0;rounded=0;&quot; edge=&quot;1&quot; parent=&quot;1&quot;&gt;
+          &lt;mxGeometry width=&quot;80&quot; relative=&quot;1&quot; as=&quot;geometry&quot;&gt;
+            &lt;mxPoint x=&quot;410&quot; y=&quot;400&quot; as=&quot;sourcePoint&quot; /&gt;
+            &lt;mxPoint x=&quot;620&quot; y=&quot;400&quot; as=&quot;targetPoint&quot; /&gt;
+          &lt;/mxGeometry&gt;
+        &lt;/mxCell&gt;
+        &lt;mxCell id=&quot;responseSuccess&quot; value=&quot;ValidationResponse(success=true)&quot; style=&quot;html=1;verticalAlign=bottom;startArrow=oval;endArrow=block;startSize=8;curved=0;rounded=0;&quot; edge=&quot;1&quot; parent=&quot;1&quot;&gt;
+          &lt;mxGeometry width=&quot;80&quot; relative=&quot;1&quot; as=&quot;geometry&quot;&gt;
+            &lt;mxPoint x=&quot;410&quot; y=&quot;430&quot; as=&quot;sourcePoint&quot; /&gt;
+            &lt;mxPoint x=&quot;170&quot; y=&quot;430&quot; as=&quot;targetPoint&quot; /&gt;
+          &lt;/mxGeometry&gt;
+        &lt;/mxCell&gt;
+      &lt;/root&gt;
+    &lt;/mxGraphModel&gt;
+  &lt;/diagram&gt;
+&lt;/mxfile&gt;
+</code></pre>
+
+<hr />
+<h2 id="class-diagram">Class Diagram</h2>
+<pre class="codehilite"><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;mxfile host=&quot;app.diagrams.net&quot; modified=&quot;2024-01-01T00:00:00.000Z&quot; agent=&quot;5.0&quot; version=&quot;24.7.17&quot; etag=&quot;draw.io-diagram&quot; type=&quot;device&quot;&gt;
+  &lt;diagram name=&quot;DDI Validation Classes&quot; id=&quot;ddi-validation-classes&quot;&gt;
+    &lt;mxGraphModel dx=&quot;1422&quot; dy=&quot;794&quot; grid=&quot;1&quot; gridSize=&quot;10&quot; guides=&quot;1&quot; tooltips=&quot;1&quot; connect=&quot;1&quot; arrows=&quot;1&quot; fold=&quot;1&quot; page=&quot;1&quot; pageScale=&quot;1&quot; pageWidth=&quot;1169&quot; pageHeight=&quot;827&quot; math=&quot;0&quot; shadow=&quot;0&quot;&gt;
+      &lt;root&gt;
+        &lt;mxCell id=&quot;0&quot; /&gt;
+        &lt;mxCell id=&quot;1&quot; parent=&quot;0&quot; /&gt;
+        &lt;!-- DDIValidationService --&gt;
+        &lt;mxCell id=&quot;ddiService&quot; value=&quot;DDIValidationService&quot; style=&quot;swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;&quot; vertex=&quot;1&quot; parent=&quot;1&quot;&gt;
+          &lt;mxGeometry x=&quot;200&quot; y=&quot;100&quot; width=&quot;320&quot; height=&quot;280&quot; as=&quot;geometry&quot; /&gt;
+        &lt;/mxCell&gt;
+        &lt;mxCell id=&quot;ddiFields&quot; value=&quot;+expectedCurrency: string&amp;#xa;+expectedCountry: string&amp;#xa;+isTestMode: boolean&quot; style=&quot;text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;&quot; vertex=&quot;1&quot; parent=&quot;ddiService&quot;&gt;
+          &lt;mxGeometry y=&quot;26&quot; width=&quot;320&quot; height=&quot;54&quot; as=&quot;geometry&quot; /&gt;
+        &lt;/mxCell&gt;
+        &lt;mxCell id=&quot;ddiLine&quot; value=&quot;&quot; style=&quot;line;strokeWidth=1;fillColor=none;align=left;verticalAlign=middle;spacingTop=-1;spacingLeft=3;spacingRight=3;rotatable=0;labelPosition=right;points=[];portConstraint=eastwest;strokeColor=inherit;&quot; vertex=&quot;1&quot; parent=&quot;ddiService&quot;&gt;
+          &lt;mxGeometry y=&quot;80&quot; width=&quot;320&quot; height=&quot;8&quot; as=&quot;geometry&quot; /&gt;
+        &lt;/mxCell&gt;
+        &lt;mxCell id=&quot;ddiMethods&quot; value=&quot;+validateEnrichedMessage(request): Promise&amp;lt;ValidationResponse&amp;gt;&amp;#xa;+performValidations(parsedXml, enrichmentData): Promise&amp;lt;ValidationResult&amp;gt;&amp;#xa;+validateCurrency(currency): CurrencyValidation&amp;#xa;+validateCountry(country): CountryValidation&amp;#xa;+validateEnrichmentData(enrichmentData, errors): void&amp;#xa;+validateXMLStructure(parsedXml, errors): void&amp;#xa;+publishToKafka(message): Promise&amp;lt;boolean&amp;gt;&amp;#xa;+healthCheck(): Promise&amp;lt;HealthStatus&amp;gt;&quot; style=&quot;text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;&quot; vertex=&quot;1&quot; parent=&quot;ddiService&quot;&gt;
+          &lt;mxGeometry y=&quot;88&quot; width=&quot;320&quot; height=&quot;192&quot; as=&quot;geometry&quot; /&gt;
+        &lt;/mxCell&gt;
+        &lt;!-- ValidationHandler --&gt;
+        &lt;mxCell id=&quot;valHandler&quot; value=&quot;ValidationHandler&quot; style=&quot;swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;&quot; vertex=&quot;1&quot; parent=&quot;1&quot;&gt;
+          &lt;mxGeometry x=&quot;600&quot; y=&quot;100&quot; width=&quot;350&quot; height=&quot;140&quot; as=&quot;geometry&quot; /&gt;
+        &lt;/mxCell&gt;
+        &lt;mxCell id=&quot;valHandlerFields&quot; value=&quot;-validationService: DDIValidationService&quot; style=&quot;text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;&quot; vertex=&quot;1&quot; parent=&quot;valHandler&quot;&gt;
+          &lt;mxGeometry y=&quot;26&quot; width=&quot;350&quot; height=&quot;26&quot; as=&quot;geometry&quot; /&gt;
+        &lt;/mxCell&gt;
+        &lt;mxCell id=&quot;valHandlerLine&quot; value=&quot;&quot; style=&quot;line;strokeWidth=1;fillColor=none;align=left;verticalAlign=middle;spacingTop=-1;spacingLeft=3;spacingRight=3;rotatable=0;labelPosition=right;points=[];portConstraint=eastwest;strokeColor=inherit;&quot; vertex=&quot;1&quot; parent=&quot;valHandler&quot;&gt;
+          &lt;mxGeometry y=&quot;52&quot; width=&quot;350&quot; height=&quot;8&quot; as=&quot;geometry&quot; /&gt;
+        &lt;/mxCell&gt;
+        &lt;mxCell id=&quot;valHandlerMethods&quot; value=&quot;+validateEnrichedMessage(call, callback): void&amp;#xa;+healthCheck(call, callback): void&amp;#xa;+convertEnrichmentDataFromGrpc(data): EnrichmentData&amp;#xa;+convertValidationResultToGrpc(result): ValidationResult&quot; style=&quot;text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;&quot; vertex=&quot;1&quot; parent=&quot;valHandler&quot;&gt;
+          &lt;mxGeometry y=&quot;60&quot; width=&quot;350&quot; height=&quot;80&quot; as=&quot;geometry&quot; /&gt;
+        &lt;/mxCell&gt;
+        &lt;!-- KafkaClient --&gt;
+        &lt;mxCell id=&quot;kafkaClient&quot; value=&quot;KafkaClient&quot; style=&quot;swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;&quot; vertex=&quot;1&quot; parent=&quot;1&quot;&gt;
+          &lt;mxGeometry x=&quot;80&quot; y=&quot;450&quot; width=&quot;280&quot; height=&quot;130&quot; as=&quot;geometry&quot; /&gt;
+        &lt;/mxCell&gt;
+        &lt;mxCell id=&quot;kafkaFields&quot; value=&quot;-producer: Producer&quot; style=&quot;text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;&quot; vertex=&quot;1&quot; parent=&quot;kafkaClient&quot;&gt;
+          &lt;mxGeometry y=&quot;26&quot; width=&quot;280&quot; height=&quot;26&quot; as=&quot;geometry&quot; /&gt;
+        &lt;/mxCell&gt;
+        &lt;mxCell id=&quot;kafkaLine&quot; value=&quot;&quot; style=&quot;line;strokeWidth=1;fillColor=none;align=left;verticalAlign=middle;spacingTop=-1;spacingLeft=3;spacingRight=3;rotatable=0;labelPosition=right;points=[];portConstraint=eastwest;strokeColor=inherit;&quot; vertex=&quot;1&quot; parent=&quot;kafkaClient&quot;&gt;
+          &lt;mxGeometry y=&quot;52&quot; width=&quot;280&quot; height=&quot;8&quot; as=&quot;geometry&quot; /&gt;
+        &lt;/mxCell&gt;
+        &lt;mxCell id=&quot;kafkaMethods&quot; value=&quot;+publishValidatedMessage(message): Promise&amp;lt;boolean&amp;gt;&amp;#xa;+healthCheck(): Promise&amp;lt;HealthStatus&amp;gt;&amp;#xa;+connect(): Promise&amp;lt;void&amp;gt;&amp;#xa;+disconnect(): Promise&amp;lt;void&amp;gt;&quot; style=&quot;text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;&quot; vertex=&quot;1&quot; parent=&quot;kafkaClient&quot;&gt;
+          &lt;mxGeometry y=&quot;60&quot; width=&quot;280&quot; height=&quot;70&quot; as=&quot;geometry&quot; /&gt;
+        &lt;/mxCell&gt;
+        &lt;!-- XMLParser --&gt;
+        &lt;mxCell id=&quot;xmlParser&quot; value=&quot;XMLParser&quot; style=&quot;swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;&quot; vertex=&quot;1&quot; parent=&quot;1&quot;&gt;
+          &lt;mxGeometry x=&quot;420&quot; y=&quot;450&quot; width=&quot;380&quot; height=&quot;110&quot; as=&quot;geometry&quot; /&gt;
+        &lt;/mxCell&gt;
+        &lt;mxCell id=&quot;xmlLine&quot; value=&quot;&quot; style=&quot;line;strokeWidth=1;fillColor=none;align=left;verticalAlign=middle;spacingTop=-1;spacingLeft=3;spacingRight=3;rotatable=0;labelPosition=right;points=[];portConstraint=eastwest;strokeColor=inherit;&quot; vertex=&quot;1&quot; parent=&quot;xmlParser&quot;&gt;
+          &lt;mxGeometry y=&quot;26&quot; width=&quot;380&quot; height=&quot;8&quot; as=&quot;geometry&quot; /&gt;
+        &lt;/mxCell&gt;
+        &lt;mxCell id=&quot;xmlMethods&quot; value=&quot;+parseXML(xmlPayload): any&amp;#xa;+convertToJSON(xmlPayload, enrichmentData, messageId, puid, messageType): any&amp;#xa;+extractFields(parsedXml): MessageFields&quot; style=&quot;text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;&quot; vertex=&quot;1&quot; parent=&quot;xmlParser&quot;&gt;
+          &lt;mxGeometry y=&quot;34&quot; width=&quot;380&quot; height=&quot;76&quot; as=&quot;geometry&quot; /&gt;
+        &lt;/mxCell&gt;
+        &lt;!-- Relationships --&gt;
+        &lt;mxCell id=&quot;rel1&quot; value=&quot;&quot; style=&quot;endArrow=open;endFill=1;endSize=12;html=1;rounded=0;&quot; edge=&quot;1&quot; parent=&quot;1&quot; source=&quot;ddiService&quot; target=&quot;kafkaClient&quot;&gt;
+          &lt;mxGeometry width=&quot;160&quot; relative=&quot;1&quot; as=&quot;geometry&quot;&gt;
+            &lt;mxPoint x=&quot;280&quot; y=&quot;400&quot; as=&quot;sourcePoint&quot; /&gt;
+            &lt;mxPoint x=&quot;220&quot; y=&quot;440&quot; as=&quot;targetPoint&quot; /&gt;
+          &lt;/mxGeometry&gt;
+        &lt;/mxCell&gt;
+        &lt;mxCell id=&quot;rel2&quot; value=&quot;&quot; style=&quot;endArrow=open;endFill=1;endSize=12;html=1;rounded=0;&quot; edge=&quot;1&quot; parent=&quot;1&quot; source=&quot;ddiService&quot; target=&quot;xmlParser&quot;&gt;
+          &lt;mxGeometry width=&quot;160&quot; relative=&quot;1&quot; as=&quot;geometry&quot;&gt;
+            &lt;mxPoint x=&quot;480&quot; y=&quot;400&quot; as=&quot;sourcePoint&quot; /&gt;
+            &lt;mxPoint x=&quot;580&quot; y=&quot;440&quot; as=&quot;targetPoint&quot; /&gt;
+          &lt;/mxGeometry&gt;
+        &lt;/mxCell&gt;
+        &lt;mxCell id=&quot;rel3&quot; value=&quot;&quot; style=&quot;endArrow=open;endFill=1;endSize=12;html=1;rounded=0;&quot; edge=&quot;1&quot; parent=&quot;1&quot; source=&quot;valHandler&quot; target=&quot;ddiService&quot;&gt;
+          &lt;mxGeometry width=&quot;160&quot; relative=&quot;1&quot; as=&quot;geometry&quot;&gt;
+            &lt;mxPoint x=&quot;600&quot; y=&quot;200&quot; as=&quot;sourcePoint&quot; /&gt;
+            &lt;mxPoint x=&quot;520&quot; y=&quot;200&quot; as=&quot;targetPoint&quot; /&gt;
+          &lt;/mxGeometry&gt;
+        &lt;/mxCell&gt;
+      &lt;/root&gt;
+    &lt;/mxGraphModel&gt;
+  &lt;/diagram&gt;
+&lt;/mxfile&gt;
+</code></pre>
+
+<hr />
+<h2 id="request-and-response-formats">Request and Response Formats</h2>
+<h3 id="grpc-service-definition">gRPC Service Definition</h3>
+<pre class="codehilite"><code class="language-protobuf">syntax = &quot;proto3&quot;;
+
+package gpp.g3.ddivalidation;
+
+service DDIValidationService {
+  rpc ValidateEnrichedMessage(ValidateEnrichedMessageRequest) returns (ValidateEnrichedMessageResponse);
+  rpc HealthCheck(HealthCheckRequest) returns (HealthCheckResponse);
+}
+</code></pre>
+
+<h3 id="validateenrichedmessagerequest">ValidateEnrichedMessageRequest</h3>
+<pre class="codehilite"><code class="language-protobuf">message ValidateEnrichedMessageRequest {
+  string message_id = 1;                    // UUID for tracking
+  string puid = 2;                         // G3I identifier  
+  string message_type = 3;                 // PACS008, PACS007, PACS003
+  string enriched_xml_payload = 4;         // Enriched XML from processor
+  EnrichmentData enrichment_data = 5;      // Account enrichment data
+  int64 timestamp = 6;                     // Processing timestamp
+  map&lt;string, string&gt; metadata = 7;       // Additional context
+}
+</code></pre>
+
+<h3 id="validateenrichedmessageresponse">ValidateEnrichedMessageResponse</h3>
+<pre class="codehilite"><code class="language-protobuf">message ValidateEnrichedMessageResponse {
+  string message_id = 1;                   // Echo back UUID
+  string puid = 2;                         // Echo back G3I identifier
+  bool success = 3;                        // Validation success flag
+  string error_message = 4;                // Error details if failed
+  ValidationResult validation_result = 5;   // Detailed validation results
+  string json_payload = 6;                 // Converted JSON payload
+  bool kafka_published = 7;                // Kafka publishing status
+  int64 processed_at = 8;                  // Processing completion time
+  string next_service = 9;                 // Next service identifier
+}
+</code></pre>
+
+<h3 id="validationresult">ValidationResult</h3>
+<pre class="codehilite"><code class="language-protobuf">message ValidationResult {
+  bool is_valid = 1;                       // Overall validation status
+  repeated ValidationError errors = 2;      // List of validation errors
+  CurrencyValidation currency_validation = 3; // Currency validation details
+  CountryValidation country_validation = 4;   // Country validation details
+  map&lt;string, string&gt; validation_metadata = 5; // Additional validation data
+}
+</code></pre>
+
+<h3 id="enrichmentdata">EnrichmentData</h3>
+<pre class="codehilite"><code class="language-protobuf">message EnrichmentData {
+  string received_acct_id = 1;             // Original account ID
+  int32 lookup_status_code = 2;            // Lookup status (200=success)
+  string lookup_status_desc = 3;           // Status description
+  string normalized_acct_id = 4;           // Normalized account ID
+  string matched_acct_id = 5;              // Matched account ID
+  string partial_match = 6;                // Partial match flag (Y/N)
+  string is_physical = 7;                  // Physical account flag (Y/N)
+  PhysicalAcctInfo physical_acct_info = 8; // Account details
+  string auth_method = 9;                  // Authentication method
+}
+</code></pre>
+
+<hr />
+<h2 id="business-rules-and-validation-logic">Business Rules and Validation Logic</h2>
+<h3 id="singapore-market-validation-rules">Singapore Market Validation Rules</h3>
+<table>
+<thead>
+<tr>
+<th>Rule Type</th>
+<th>Validation Logic</th>
+<th>Expected Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Currency</strong></td>
+<td>Must be SGD for Singapore market</td>
+<td><code>SGD</code></td>
+</tr>
+<tr>
+<td><strong>Country</strong></td>
+<td>Must be SG for local processing</td>
+<td><code>SG</code></td>
+</tr>
+<tr>
+<td><strong>Account Format</strong></td>
+<td>Validates account ID formats</td>
+<td>Various patterns</td>
+</tr>
+<tr>
+<td><strong>Amount</strong></td>
+<td>Validates transaction amounts and limits</td>
+<td>Positive numbers</td>
+</tr>
+<tr>
+<td><strong>Enrichment Data</strong></td>
+<td>Validates completeness of enrichment</td>
+<td>Required fields present</td>
+</tr>
+</tbody>
+</table>
+<h3 id="validation-error-codes">Validation Error Codes</h3>
+<table>
+<thead>
+<tr>
+<th>Error Code</th>
+<th>Description</th>
+<th>Severity</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>INVALID_CURRENCY</code></td>
+<td>Non-SGD currency detected</td>
+<td>ERROR</td>
+</tr>
+<tr>
+<td><code>INVALID_COUNTRY</code></td>
+<td>Non-SG country detected</td>
+<td>ERROR</td>
+</tr>
+<tr>
+<td><code>MISSING_ENRICHMENT</code></td>
+<td>Required enrichment data missing</td>
+<td>ERROR</td>
+</tr>
+<tr>
+<td><code>INVALID_XML_STRUCTURE</code></td>
+<td>Malformed XML structure</td>
+<td>ERROR</td>
+</tr>
+<tr>
+<td><code>VALIDATION_ERROR</code></td>
+<td>General validation failure</td>
+<td>ERROR</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="configuration">Configuration</h2>
+<h3 id="environment-variables">Environment Variables</h3>
+<pre class="codehilite"><code class="language-bash"># gRPC Configuration
+GRPC_PORT=50053
+SERVICE_NAME=fast-ddi-validation-service
+
+# Market Configuration  
+EXPECTED_CURRENCY=SGD
+EXPECTED_COUNTRY=SG
+TIMEZONE=Asia/Singapore
+
+# Kafka Configuration
+KAFKA_BROKERS=localhost:9092
+KAFKA_TOPIC=validated-messages
+KAFKA_CLIENT_ID=fast-ddi-validation-service
+
+# Processing Configuration
+VALIDATION_TIMEOUT_MS=5000
+MAX_RETRY_ATTEMPTS=3
+RETRY_BACKOFF_MS=1000
+
+# Test Configuration
+USE_TEST_MODE=false
+ENVIRONMENT=development
+</code></pre>
+
+<hr />
+<h2 id="database-schema">Database Schema</h2>
+<p><strong>Note</strong>: This service does not maintain persistent data storage. It operates as a stateless validation and transformation service.</p>
+<h3 id="kafka-topic-schema">Kafka Topic Schema</h3>
+<h4 id="topic-validated-messages">Topic: <code>validated-messages</code></h4>
+<pre class="codehilite"><code class="language-json">{
+  &quot;messageId&quot;: &quot;string&quot;,
+  &quot;puid&quot;: &quot;string&quot;, 
+  &quot;messageType&quot;: &quot;string&quot;,
+  &quot;jsonPayload&quot;: {
+    &quot;messageId&quot;: &quot;string&quot;,
+    &quot;puid&quot;: &quot;string&quot;,
+    &quot;messageType&quot;: &quot;string&quot;,
+    &quot;enrichedXmlPayload&quot;: &quot;string&quot;,
+    &quot;enrichmentData&quot;: &quot;object&quot;,
+    &quot;extractedFields&quot;: {
+      &quot;cdtrAcct&quot;: &quot;string&quot;,
+      &quot;amount&quot;: &quot;string&quot;, 
+      &quot;currency&quot;: &quot;string&quot;,
+      &quot;country&quot;: &quot;string&quot;
+    },
+    &quot;processedAt&quot;: &quot;string&quot;,
+    &quot;sourceService&quot;: &quot;fast-ddi-validation-service&quot;
+  },
+  &quot;enrichmentData&quot;: &quot;object&quot;,
+  &quot;validationResult&quot;: &quot;object&quot;,
+  &quot;timestamp&quot;: &quot;number&quot;
+}
+</code></pre>
+
+<hr />
+<h2 id="service-integration">Service Integration</h2>
+<h3 id="upstream-services">Upstream Services</h3>
+<ul>
+<li><strong>fast-inwd-processor-service</strong> (Port 50052): Provides enriched messages for validation</li>
+</ul>
+<h3 id="downstream-services">Downstream Services</h3>
+<ul>
+<li><strong>fast-orchestrator-service</strong> (Port 3004): Consumes validated messages via Kafka</li>
+</ul>
+<h3 id="message-flow">Message Flow</h3>
+<pre class="codehilite"><code>fast-inwd-processor-service (PACS.003)
+    ↓ (gRPC ValidateEnrichedMessage)
+fast-ddi-validation-service
+    ↓ (Kafka: validated-messages)
+fast-orchestrator-service
+</code></pre>
+
+<hr />
+<h2 id="error-handling">Error Handling</h2>
+<h3 id="error-response-structure">Error Response Structure</h3>
+<pre class="codehilite"><code class="language-json">{
+  &quot;messageId&quot;: &quot;uuid&quot;,
+  &quot;puid&quot;: &quot;G3I123456789&quot;, 
+  &quot;success&quot;: false,
+  &quot;errorMessage&quot;: &quot;Singapore market validation failed&quot;,
+  &quot;validationResult&quot;: {
+    &quot;isValid&quot;: false,
+    &quot;errors&quot;: [
+      {
+        &quot;field&quot;: &quot;currency&quot;,
+        &quot;errorCode&quot;: &quot;INVALID_CURRENCY&quot;, 
+        &quot;errorMessage&quot;: &quot;Invalid currency: USD, expected SGD&quot;,
+        &quot;severity&quot;: &quot;ERROR&quot;
+      }
+    ],
+    &quot;currencyValidation&quot;: {
+      &quot;isValid&quot;: false,
+      &quot;expectedCurrency&quot;: &quot;SGD&quot;,
+      &quot;validationMessage&quot;: &quot;Currency validation failed&quot;
+    },
+    &quot;countryValidation&quot;: {
+      &quot;isValid&quot;: false, 
+      &quot;expectedCountry&quot;: &quot;SG&quot;,
+      &quot;validationMessage&quot;: &quot;Country validation failed&quot;
+    }
+  },
+  &quot;kafkaPublished&quot;: false,
+  &quot;processedAt&quot;: 1640995200000
+}
+</code></pre>
+
+<hr />
+<h2 id="performance-characteristics">Performance Characteristics</h2>
+<h3 id="service-performance-metrics">Service Performance Metrics</h3>
+<ul>
+<li><strong>Average Response Time</strong>: &lt; 300ms for validation processing</li>
+<li><strong>Throughput</strong>: 1000+ messages per second</li>
+<li><strong>Success Rate</strong>: 99.9% for valid Singapore messages</li>
+<li><strong>Kafka Publishing</strong>: &lt; 100ms additional latency</li>
+</ul>
+<h3 id="resource-requirements">Resource Requirements</h3>
+<ul>
+<li><strong>CPU</strong>: Low to moderate (validation logic)</li>
+<li><strong>Memory</strong>: 512MB - 1GB (XML parsing and transformation)</li>
+<li><strong>Network</strong>: High (Kafka publishing)</li>
+<li><strong>Storage</strong>: Minimal (stateless service)</li>
+</ul>
+<hr />
+<h2 id="monitoring-and-health-checks">Monitoring and Health Checks</h2>
+<h3 id="health-check-endpoint">Health Check Endpoint</h3>
+<pre class="codehilite"><code class="language-protobuf">rpc HealthCheck(HealthCheckRequest) returns (HealthCheckResponse);
+</code></pre>
+
+<h3 id="health-check-response">Health Check Response</h3>
+<pre class="codehilite"><code class="language-json">{
+  &quot;status&quot;: &quot;SERVING&quot;, // SERVING, NOT_SERVING, UNKNOWN
+  &quot;message&quot;: &quot;Validation service is healthy&quot;,
+  &quot;timestamp&quot;: 1640995200000
+}
+</code></pre>
+
+<h3 id="monitoring-metrics">Monitoring Metrics</h3>
+<ul>
+<li>Validation success/failure rates</li>
+<li>Processing latency per message type</li>
+<li>Kafka publishing success rates</li>
+<li>Error distribution by validation rule</li>
+<li>Service uptime and availability</li>
+</ul>
+<hr />
+<h2 id="security-considerations">Security Considerations</h2>
+<h3 id="data-protection">Data Protection</h3>
+<ul>
+<li>No sensitive data persistence</li>
+<li>Secure gRPC communication</li>
+<li>Kafka message encryption in transit</li>
+<li>Input validation and sanitization</li>
+</ul>
+<h3 id="access-control">Access Control</h3>
+<ul>
+<li>Service-to-service authentication</li>
+<li>Network-level security (VPC/firewall rules)</li>
+<li>Role-based access for monitoring</li>
+</ul>
+<hr />
+<h2 id="deployment-notes">Deployment Notes</h2>
+<h3 id="dependencies">Dependencies</h3>
+<ul>
+<li>Kafka cluster availability</li>
+<li>Network connectivity to orchestrator service</li>
+<li>gRPC port 50053 accessibility</li>
+</ul>
+<h3 id="scaling-considerations">Scaling Considerations</h3>
+<ul>
+<li>Horizontal scaling supported (stateless)</li>
+<li>Kafka partitioning for load distribution</li>
+<li>Load balancing across service instances</li>
+</ul>
+<h3 id="configuration-management">Configuration Management</h3>
+<ul>
+<li>Environment-specific configuration</li>
+<li>Feature flags for test mode</li>
+<li>Market-specific validation rules </li>
+</ul>
+</div>
+
+<div class="service-section" id="inwd-processor">
+<h1 id="fast-inward-processor-service-design-document">Fast Inward Processor Service - Design Document</h1>
+<h2 id="overview">Overview</h2>
+<p>The <strong>Fast Inward Processor Service</strong> is the central orchestration hub of the Singapore G3 Payment Platform. It coordinates account lookup, reference data retrieval, and message enrichment for inward payment processing. This gRPC service serves as the primary integration point between multiple services and implements intelligent routing based on message types.</p>
+<h3 id="key-responsibilities">Key Responsibilities</h3>
+<ul>
+<li>Orchestrate account lookup and reference data retrieval</li>
+<li>Enrich PACS messages with account information and authentication methods</li>
+<li>Implement intelligent routing (PACS.003 → Validation, PACS.008/007 → Direct Kafka)</li>
+<li>Coordinate with multiple downstream services</li>
+<li>Manage message transformation and enrichment workflows</li>
+</ul>
+<h3 id="service-details">Service Details</h3>
+<ul>
+<li><strong>Service Type</strong>: gRPC Service (Central Hub)</li>
+<li><strong>Port</strong>: 50052</li>
+<li><strong>Package</strong>: <code>gpp.g3.inwdprocessor</code></li>
+<li><strong>Technology Stack</strong>: TypeScript, gRPC, Kafka</li>
+<li><strong>Role</strong>: Central orchestration hub for message enrichment</li>
+</ul>
+<hr />
+<h2 id="sequence-diagram">Sequence Diagram</h2>
+<pre class="codehilite"><code class="language-mermaid">sequenceDiagram
+    participant RH as fast-requesthandler-service
+    participant IWP as fast-inwd-processor-service
+    participant AL as fast-accountlookup-service
+    participant RD as fast-referencedata-service
+    participant VAL as fast-ddi-validation-service
+    participant KAFKA as Kafka Broker
+
+    RH-&gt;&gt;IWP: ProcessMessage(PACS.008)
+    Note over IWP: Extract CdtrAcct from XML
+
+    IWP-&gt;&gt;AL: LookupAccount(cdtrAcctId)
+    AL-&gt;&gt;IWP: AccountLookupResponse(acctSys=VAM)
+
+    IWP-&gt;&gt;RD: LookupAuthMethod(acctSys, acctId)
+    RD-&gt;&gt;IWP: AuthMethodResponse(authMethod=GROUPLIMIT)
+
+    Note over IWP: Create enriched XML payload
+    Note over IWP: Determine routing (DIRECT_KAFKA)
+
+    IWP-&gt;&gt;KAFKA: Publish to enriched-messages topic
+    IWP-&gt;&gt;RH: ProcessorResponse(success=true)
+
+    Note over IWP: Alternative flow for PACS.003
+    RH-&gt;&gt;IWP: ProcessMessage(PACS.003)
+    Note over IWP: Determine routing (VALIDATION_SERVICE)
+    IWP-&gt;&gt;VAL: ValidateEnrichedMessage(enrichedPayload)
+    VAL-&gt;&gt;IWP: ValidationResponse(success=true)
+    IWP-&gt;&gt;RH: ProcessorResponse(success=true)
+</code></pre>
+
+<hr />
+<h2 id="class-diagram">Class Diagram</h2>
+<pre class="codehilite"><code class="language-mermaid">classDiagram
+    class InwdProcessorService {
+        -accountLookupClient: AccountLookupClient
+        -referenceDataClient: ReferenceDataClient
+        -validationClient: ValidationClient
+        -kafkaClient: KafkaClient
+        -useMockMode: boolean
+        +enrichMessage(request): Promise&lt;EnrichmentResponse&gt;
+        +performEnrichment(request, cdtrAcct): Promise&lt;EnrichmentResult&gt;
+        +determineRouting(messageType): string
+        +routeToValidationService(request, payload, data): Promise&lt;Response&gt;
+        +routeToKafkaDirectly(request, payload, data): Promise&lt;Response&gt;
+        +createJSONPayload(request, payload, data): any
+        +createEnrichedXML(xmlPayload, enrichmentData): string
+        +getMarketConfig(metadata): MarketConfig
+    }
+
+    class InwdProcessorHandler {
+        -enrichmentService: InwdProcessorService
+        +enrichMessage(call, callback): void
+        +healthCheck(call, callback): void
+        +convertEnrichmentDataToGrpc(data): ProcessorData
+    }
+
+    class AccountLookupClient {
+        -client: grpc.Client
+        +lookupAccount(request): Promise&lt;AccountLookupResponse&gt;
+        +healthCheck(): Promise&lt;HealthStatus&gt;
+    }
+
+    class ReferenceDataClient {
+        +lookupAuthMethod(request): Promise&lt;AuthMethodResponse&gt;
+        +healthCheck(): Promise&lt;HealthStatus&gt;
+    }
+
+    class ValidationClient {
+        -client: grpc.Client
+        +validateEnrichedMessage(request): Promise&lt;ValidationResponse&gt;
+    }
+
+    class KafkaClient {
+        -producer: Producer
+        +publishEnrichedMessage(message): Promise&lt;boolean&gt;
+        +connect(): Promise&lt;void&gt;
+        +disconnect(): Promise&lt;void&gt;
+    }
+
+    InwdProcessorService --&gt; AccountLookupClient
+    InwdProcessorService --&gt; ReferenceDataClient
+    InwdProcessorService --&gt; ValidationClient
+    InwdProcessorService --&gt; KafkaClient
+    InwdProcessorHandler --&gt; InwdProcessorService
+</code></pre>
+
+<hr />
+<h2 id="request-and-response-formats">Request and Response Formats</h2>
+<h3 id="grpc-service-definition">gRPC Service Definition</h3>
+<pre class="codehilite"><code class="language-protobuf">syntax = &quot;proto3&quot;;
+
+package gpp.g3.inwdprocessor;
+
+service InwdProcessorService {
+  rpc ProcessMessage(ProcessorRequest) returns (ProcessorResponse);
+  rpc HealthCheck(HealthCheckRequest) returns (HealthCheckResponse);
+}
+</code></pre>
+
+<h3 id="processorrequest">ProcessorRequest</h3>
+<pre class="codehilite"><code class="language-protobuf">message ProcessorRequest {
+  string message_id = 1;          // UUID from request handler
+  string puid = 2;                // G3I identifier
+  string message_type = 3;        // PACS008, PACS007, PACS003, CAMT053, etc.
+  string xml_payload = 4;         // The validated XML payload
+  map&lt;string, string&gt; metadata = 5; // Additional context data (market info)
+  int64 timestamp = 6;            // Original processing timestamp
+}
+</code></pre>
+
+<h3 id="processorresponse">ProcessorResponse</h3>
+<pre class="codehilite"><code class="language-protobuf">message ProcessorResponse {
+  string message_id = 1;               // Echo back the UUID
+  string puid = 2;                     // Echo back the G3I identifier
+  bool success = 3;                    // Whether processing was successful
+  string enriched_payload = 4;         // The enriched XML payload
+  string error_message = 5;            // Error details if success = false
+  ProcessorData enrichment_data = 6;   // Enrichment data from account lookup
+  int64 processed_at = 7;              // When processing completed
+  string next_service = 8;             // Next service in pipeline
+}
+</code></pre>
+
+<h3 id="processordata-enrichment-data">ProcessorData (Enrichment Data)</h3>
+<pre class="codehilite"><code class="language-protobuf">message ProcessorData {
+  string received_acct_id = 1;         // Original CdtrAcct ID
+  int32 lookup_status_code = 2;        // 200 for success
+  string lookup_status_desc = 3;       // Success description
+  string normalized_acct_id = 4;       // Normalized account ID
+  string matched_acct_id = 5;          // Matched account ID
+  string partial_match = 6;            // Y or N
+  string is_physical = 7;              // Y or N
+  PhysicalAccountInfo physical_acct_info = 8; // Complex account information
+  string auth_method = 9;              // Authentication method
+}
+</code></pre>
+
+<h3 id="physicalaccountinfo">PhysicalAccountInfo</h3>
+<pre class="codehilite"><code class="language-protobuf">message PhysicalAccountInfo {
+  string acct_id = 1;                  // Account ID
+  string acct_sys = 2;                 // Account system (MDZ, VAM, MEPS, etc.)
+  string acct_group = 3;               // Account group (varies by market)
+  string country = 4;                  // Country code (SG, MY, TH, etc.)
+  string branch_id = 5;                // Branch ID (nullable)
+  AccountAttributes acct_attributes = 6;
+  AccountOpsAttributes acct_ops_attributes = 7;
+  string bicfi = 8;                    // Bank identifier (market-specific)
+  string currency_code = 9;            // Currency code (SGD, MYR, THB, USD, EUR)
+}
+</code></pre>
+
+<hr />
+<h2 id="business-logic-and-routing-rules">Business Logic and Routing Rules</h2>
+<h3 id="message-type-routing">Message Type Routing</h3>
+<table>
+<thead>
+<tr>
+<th>Message Type</th>
+<th>Routing Decision</th>
+<th>Destination</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>PACS.003</strong></td>
+<td><code>VALIDATION_SERVICE</code></td>
+<td>fast-ddi-validation-service → Kafka</td>
+</tr>
+<tr>
+<td><strong>PACS.008</strong></td>
+<td><code>DIRECT_KAFKA</code></td>
+<td>Direct to enriched-messages topic</td>
+</tr>
+<tr>
+<td><strong>PACS.007</strong></td>
+<td><code>DIRECT_KAFKA</code></td>
+<td>Direct to enriched-messages topic</td>
+</tr>
+<tr>
+<td><strong>Default</strong></td>
+<td><code>VALIDATION_SERVICE</code></td>
+<td>fast-ddi-validation-service → Kafka</td>
+</tr>
+</tbody>
+</table>
+<h3 id="account-system-detection">Account System Detection</h3>
+<pre class="codehilite"><code class="language-typescript">// Account System Logic (via Account Lookup Service)
+determineAccountSystem(accountId: string): string {
+  // VAM accounts: accounts starting with 999 or containing VAM
+  if (accountId.startsWith('999') || accountId.includes('VAM')) {
+    return 'VAM';
+  }
+  // All other accounts use MDZ
+  return 'MDZ';
+}
+</code></pre>
+
+<h3 id="authentication-method-rules">Authentication Method Rules</h3>
+<pre class="codehilite"><code class="language-typescript">// Authentication Method Logic (via Reference Data Service)
+determineAuthMethod(accountId: string): string {
+  if (accountId.startsWith('999') || accountId.startsWith('VAM')) {
+    return 'GROUPLIMIT';  // VAM accounts require group limits
+  }
+  if (accountId.startsWith('888') || accountId.includes('CORP')) {
+    return 'AFPTHENLIMIT'; // Corporate accounts
+  }
+  if (accountId.startsWith('777') || accountId.includes('PRIV')) {
+    return 'AFPONLY';      // Private accounts
+  }
+  return 'AFPONLY';        // Default
+}
+</code></pre>
+
+<hr />
+<h2 id="enrichment-data-structure">Enrichment Data Structure</h2>
+<h3 id="complete-enrichment-response">Complete Enrichment Response</h3>
+<pre class="codehilite"><code class="language-json">{
+  &quot;receivedAcctId&quot;: &quot;999888777666&quot;,
+  &quot;lookupStatusCode&quot;: 200,
+  &quot;lookupStatusDesc&quot;: &quot;Account lookup successful&quot;,
+  &quot;normalizedAcctId&quot;: &quot;999888777666&quot;,
+  &quot;matchedAcctId&quot;: &quot;999888777666&quot;,
+  &quot;partialMatch&quot;: &quot;N&quot;,
+  &quot;isPhysical&quot;: &quot;Y&quot;,
+  &quot;authMethod&quot;: &quot;GROUPLIMIT&quot;,
+  &quot;physicalAcctInfo&quot;: {
+    &quot;acctId&quot;: &quot;999888777666&quot;,
+    &quot;acctSys&quot;: &quot;VAM&quot;,
+    &quot;acctGroup&quot;: &quot;RETAIL&quot;,
+    &quot;country&quot;: &quot;SG&quot;,
+    &quot;branchId&quot;: &quot;001&quot;,
+    &quot;acctAttributes&quot;: {
+      &quot;acctType&quot;: &quot;Physical&quot;,
+      &quot;acctCategory&quot;: &quot;SAVINGS&quot;,
+      &quot;acctPurpose&quot;: &quot;PERSONAL_BANKING&quot;
+    },
+    &quot;acctOpsAttributes&quot;: {
+      &quot;isActive&quot;: &quot;Yes&quot;,
+      &quot;acctStatus&quot;: &quot;Active&quot;,
+      &quot;openDate&quot;: &quot;15/03/2020&quot;,
+      &quot;expiryDate&quot;: &quot;31/12/2025&quot;,
+      &quot;restraints&quot;: {
+        &quot;stopAll&quot;: &quot;N&quot;,
+        &quot;stopDebits&quot;: &quot;N&quot;,
+        &quot;stopCredits&quot;: &quot;N&quot;,
+        &quot;stopAtm&quot;: &quot;N&quot;,
+        &quot;stopEftPos&quot;: &quot;N&quot;,
+        &quot;stopUnknown&quot;: &quot;N&quot;,
+        &quot;warnings&quot;: []
+      }
+    },
+    &quot;bicfi&quot;: &quot;ANZBSG3MXXX&quot;,
+    &quot;currencyCode&quot;: &quot;SGD&quot;
+  }
+}
+</code></pre>
+
+<hr />
+<h2 id="integration-patterns">Integration Patterns</h2>
+<h3 id="service-integration-flow">Service Integration Flow</h3>
+<pre class="codehilite"><code>1. Request Handler → Inward Processor (ProcessMessage)
+2. Inward Processor → Account Lookup (LookupAccount)
+3. Account Lookup → Inward Processor (EnrichmentData with acctSys)
+4. Inward Processor → Reference Data (LookupAuthMethod)  
+5. Reference Data → Inward Processor (AuthMethod)
+6. Inward Processor → Create Enriched XML
+7. Inward Processor → Route based on message type:
+   - PACS.003 → Validation Service → Kafka
+   - PACS.008/007 → Direct Kafka
+</code></pre>
+
+<h3 id="kafka-topic-strategy">Kafka Topic Strategy</h3>
+<h4 id="topic-enriched-messages-pacs008-pacs007">Topic: <code>enriched-messages</code> (PACS.008, PACS.007)</h4>
+<pre class="codehilite"><code class="language-json">{
+  &quot;messageId&quot;: &quot;uuid&quot;,
+  &quot;puid&quot;: &quot;G3I123456789&quot;,
+  &quot;messageType&quot;: &quot;PACS.008&quot;,
+  &quot;jsonPayload&quot;: {
+    &quot;messageId&quot;: &quot;uuid&quot;,
+    &quot;puid&quot;: &quot;G3I123456789&quot;, 
+    &quot;messageType&quot;: &quot;PACS.008&quot;,
+    &quot;enrichedXmlPayload&quot;: &quot;enriched-xml-content&quot;,
+    &quot;enrichmentData&quot;: &quot;enrichment-object&quot;,
+    &quot;extractedFields&quot;: {
+      &quot;cdtrAcct&quot;: &quot;999888777666&quot;,
+      &quot;amount&quot;: &quot;1000.00&quot;,
+      &quot;currency&quot;: &quot;SGD&quot;, 
+      &quot;country&quot;: &quot;SG&quot;
+    },
+    &quot;processedAt&quot;: &quot;2024-01-01T10:00:00Z&quot;,
+    &quot;sourceService&quot;: &quot;fast-enrichment-service&quot;
+  },
+  &quot;enrichmentData&quot;: &quot;enrichment-object&quot;,
+  &quot;timestamp&quot;: 1640995200000,
+  &quot;sourceService&quot;: &quot;fast-enrichment-service&quot;
+}
+</code></pre>
+
+<hr />
+<h2 id="configuration">Configuration</h2>
+<h3 id="environment-variables">Environment Variables</h3>
+<pre class="codehilite"><code class="language-bash"># gRPC Configuration
+GRPC_PORT=50052
+SERVICE_NAME=fast-inwd-processor-service
+
+# Market Configuration
+COUNTRY=SG
+DEFAULT_CURRENCY=SGD
+TIMEZONE=Asia/Singapore
+
+# Downstream Service URLs
+ACCOUNT_LOOKUP_SERVICE_URL=localhost:50059
+REFERENCE_DATA_SERVICE_URL=localhost:50060
+VALIDATION_SERVICE_URL=localhost:50053
+
+# Kafka Configuration
+KAFKA_BROKERS=localhost:9092
+KAFKA_CLIENT_ID=fast-inwd-processor-service
+ENRICHED_MESSAGES_TOPIC=enriched-messages
+
+# Processing Configuration
+LOOKUP_TIMEOUT_MS=3000
+MAX_RETRY_ATTEMPTS=3
+RETRY_BACKOFF_MS=1000
+USE_MOCK_MODE=false
+
+# Test Configuration
+NODE_ENV=development
+ENVIRONMENT=development
+</code></pre>
+
+<hr />
+<h2 id="database-schema">Database Schema</h2>
+<p><strong>Note</strong>: This service does not maintain persistent data storage. It operates as a stateless orchestration service that coordinates between multiple data sources.</p>
+<h3 id="mock-data-storage-test-mode-only">Mock Data Storage (Test Mode Only)</h3>
+<pre class="codehilite"><code class="language-typescript">interface MockAccountData {
+  accountId: string;
+  accountSystem: 'VAM' | 'MDZ' | 'MEPS';
+  authMethod: 'GROUPLIMIT' | 'AFPTHENLIMIT' | 'AFPONLY';
+  country: string;
+  currency: string;
+  isActive: boolean;
+}
+</code></pre>
+
+<hr />
+<h2 id="service-dependencies">Service Dependencies</h2>
+<h3 id="required-services">Required Services</h3>
+<table>
+<thead>
+<tr>
+<th>Service</th>
+<th>Port</th>
+<th>Purpose</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>fast-accountlookup-service</strong></td>
+<td>50059</td>
+<td>Account information retrieval</td>
+<td>Required</td>
+</tr>
+<tr>
+<td><strong>fast-referencedata-service</strong></td>
+<td>50060</td>
+<td>Authentication method lookup</td>
+<td>Required</td>
+</tr>
+<tr>
+<td><strong>fast-ddi-validation-service</strong></td>
+<td>50053</td>
+<td>Message validation (PACS.003)</td>
+<td>Required</td>
+</tr>
+<tr>
+<td><strong>Kafka Broker</strong></td>
+<td>9092</td>
+<td>Message publishing (PACS.008/007)</td>
+<td>Required</td>
+</tr>
+</tbody>
+</table>
+<h3 id="optional-integrations">Optional Integrations</h3>
+<table>
+<thead>
+<tr>
+<th>Service</th>
+<th>Port</th>
+<th>Purpose</th>
+<th>Fallback</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Monitoring Service</strong></td>
+<td>Various</td>
+<td>Health and metrics</td>
+<td>Local logging</td>
+</tr>
+<tr>
+<td><strong>Configuration Service</strong></td>
+<td>Various</td>
+<td>Dynamic configuration</td>
+<td>Environment variables</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="error-handling">Error Handling</h2>
+<h3 id="error-response-structure">Error Response Structure</h3>
+<pre class="codehilite"><code class="language-json">{
+  &quot;messageId&quot;: &quot;uuid&quot;,
+  &quot;puid&quot;: &quot;G3I123456789&quot;,
+  &quot;success&quot;: false,
+  &quot;errorMessage&quot;: &quot;Account lookup failed: Service unavailable&quot;,
+  &quot;enrichmentData&quot;: null,
+  &quot;processedAt&quot;: 1640995200000,
+  &quot;nextService&quot;: &quot;&quot;,
+  &quot;errorCode&quot;: &quot;ACCOUNT_LOOKUP_ERROR&quot;,
+  &quot;errorDetails&quot;: {
+    &quot;service&quot;: &quot;fast-accountlookup-service&quot;,
+    &quot;operation&quot;: &quot;LookupAccount&quot;, 
+    &quot;cdtrAcctId&quot;: &quot;123456789&quot;,
+    &quot;retryAttempts&quot;: 3,
+    &quot;lastError&quot;: &quot;Connection timeout&quot;
+  }
+}
+</code></pre>
+
+<h3 id="error-categories">Error Categories</h3>
+<table>
+<thead>
+<tr>
+<th>Error Type</th>
+<th>Code</th>
+<th>Description</th>
+<th>Recovery Action</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Account Lookup Errors</strong></td>
+<td><code>LOOKUP_ERROR</code></td>
+<td>Account service unavailable</td>
+<td>Retry with exponential backoff</td>
+</tr>
+<tr>
+<td><strong>Reference Data Errors</strong></td>
+<td><code>REFDATA_ERROR</code></td>
+<td>Auth method lookup failed</td>
+<td>Use default auth method</td>
+</tr>
+<tr>
+<td><strong>Validation Errors</strong></td>
+<td><code>VALIDATION_ERROR</code></td>
+<td>Validation service failed</td>
+<td>Return error to client</td>
+</tr>
+<tr>
+<td><strong>Kafka Errors</strong></td>
+<td><code>KAFKA_ERROR</code></td>
+<td>Publishing failed</td>
+<td>Retry publishing</td>
+</tr>
+<tr>
+<td><strong>XML Processing Errors</strong></td>
+<td><code>XML_ERROR</code></td>
+<td>Invalid XML structure</td>
+<td>Return validation error</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="performance-characteristics">Performance Characteristics</h2>
+<h3 id="service-performance-metrics">Service Performance Metrics</h3>
+<ul>
+<li><strong>Average Response Time</strong>: 150-300ms (including downstream calls)</li>
+<li><strong>Account Lookup Time</strong>: ~110ms average</li>
+<li><strong>Reference Data Time</strong>: ~50ms average  </li>
+<li><strong>XML Processing Time</strong>: ~20ms average</li>
+<li><strong>Kafka Publishing Time</strong>: ~30ms average</li>
+</ul>
+<h3 id="throughput-specifications">Throughput Specifications</h3>
+<ul>
+<li><strong>Target Throughput</strong>: 1000+ messages per second</li>
+<li><strong>Concurrent Requests</strong>: 100+ simultaneous</li>
+<li><strong>Resource Usage</strong>: 512MB-1GB memory, moderate CPU</li>
+</ul>
+<h3 id="sla-requirements">SLA Requirements</h3>
+<ul>
+<li><strong>Availability</strong>: 99.9% uptime</li>
+<li><strong>Response Time</strong>: 95th percentile &lt; 500ms</li>
+<li><strong>Error Rate</strong>: &lt; 0.1% for valid requests</li>
+</ul>
+<hr />
+<h2 id="monitoring-and-health-checks">Monitoring and Health Checks</h2>
+<h3 id="health-check-implementation">Health Check Implementation</h3>
+<pre class="codehilite"><code class="language-typescript">async healthCheck(): Promise&lt;HealthCheckResponse&gt; {
+  const dependencies = await Promise.allSettled([
+    this.accountLookupClient.healthCheck(),
+    this.referenceDataClient.healthCheck(),
+    this.kafkaClient.healthCheck()
+  ]);
+
+  const overallHealth = dependencies.every(d =&gt; d.status === 'fulfilled');
+
+  return {
+    status: overallHealth ? 'SERVING' : 'NOT_SERVING',
+    message: overallHealth ? 'All dependencies healthy' : 'Some dependencies unhealthy',
+    timestamp: Date.now(),
+    dependencies: {
+      accountLookup: dependencies[0].status,
+      referenceData: dependencies[1].status, 
+      kafka: dependencies[2].status
+    }
+  };
+}
+</code></pre>
+
+<h3 id="monitoring-metrics">Monitoring Metrics</h3>
+<ul>
+<li><strong>Message Processing Rates</strong>: By message type and routing decision</li>
+<li><strong>Downstream Service Latency</strong>: Response times for each dependency</li>
+<li><strong>Error Rates</strong>: By error type and downstream service</li>
+<li><strong>Enrichment Success Rates</strong>: Successful vs failed enrichments</li>
+<li><strong>Routing Distribution</strong>: VALIDATION_SERVICE vs DIRECT_KAFKA percentages</li>
+</ul>
+<hr />
+<h2 id="security-considerations">Security Considerations</h2>
+<h3 id="data-security">Data Security</h3>
+<ul>
+<li>No persistent sensitive data storage</li>
+<li>Secure gRPC communication with downstream services  </li>
+<li>Input validation and sanitization</li>
+<li>XML parsing security (XXE protection)</li>
+</ul>
+<h3 id="access-control">Access Control</h3>
+<ul>
+<li>Service-to-service authentication via gRPC metadata</li>
+<li>Network segmentation for internal services</li>
+<li>Role-based access for monitoring and management</li>
+</ul>
+<h3 id="data-privacy">Data Privacy</h3>
+<ul>
+<li>Message data encrypted in transit</li>
+<li>No logging of sensitive payment information</li>
+<li>Compliance with PCI DSS requirements</li>
+</ul>
+<hr />
+<h2 id="deployment-and-scaling">Deployment and Scaling</h2>
+<h3 id="deployment-requirements">Deployment Requirements</h3>
+<ul>
+<li><strong>Platform</strong>: Kubernetes or container orchestration</li>
+<li><strong>Resources</strong>: 1-2 CPU cores, 1-2GB RAM per instance</li>
+<li><strong>Network</strong>: Access to all downstream services and Kafka</li>
+<li><strong>Storage</strong>: Minimal (stateless service)</li>
+</ul>
+<h3 id="scaling-strategy">Scaling Strategy</h3>
+<ul>
+<li><strong>Horizontal Scaling</strong>: Multiple instances behind load balancer</li>
+<li><strong>Auto-scaling</strong>: Based on CPU usage and request latency</li>
+<li><strong>Circuit Breakers</strong>: Prevent cascade failures</li>
+<li><strong>Bulkhead Pattern</strong>: Isolate different message types</li>
+</ul>
+<h3 id="high-availability">High Availability</h3>
+<ul>
+<li><strong>Multi-zone Deployment</strong>: Distribute across availability zones</li>
+<li><strong>Health Checks</strong>: Kubernetes liveness and readiness probes</li>
+<li><strong>Graceful Degradation</strong>: Continue with mock data if services unavailable</li>
+<li><strong>Disaster Recovery</strong>: Rapid service restart and dependency reconnection </li>
+</ul>
+</div>
+
+<div class="service-section" id="account-lookup">
+<h1 id="fast-account-lookup-service-design-document">Fast Account Lookup Service - Design Document</h1>
+<h2 id="overview">Overview</h2>
+<p>The <strong>Fast Account Lookup Service</strong> is a gRPC-based microservice that provides account lookup and enrichment capabilities for PACS message processing in the Singapore G3 Payment Platform. It serves as the primary source for account system detection (VAM/MDZ) and comprehensive account enrichment data.</p>
+<h3 id="key-responsibilities">Key Responsibilities</h3>
+<ul>
+<li>Lookup account information based on creditor account IDs</li>
+<li>Determine account system (VAM, MDZ, MEPS, FAST) based on account patterns</li>
+<li>Provide comprehensive account enrichment data</li>
+<li>Support Singapore banking standards and compliance</li>
+<li>Generate realistic mock data for development and testing</li>
+</ul>
+<h3 id="service-details">Service Details</h3>
+<ul>
+<li><strong>Service Type</strong>: gRPC Service</li>
+<li><strong>Port</strong>: 50059</li>
+<li><strong>Package</strong>: <code>gpp.g3.accountlookup</code></li>
+<li><strong>Technology Stack</strong>: TypeScript, gRPC</li>
+<li><strong>Implementation</strong>: Currently stubbed with intelligent mock data</li>
+</ul>
+<hr />
+<h2 id="sequence-diagram">Sequence Diagram</h2>
+<pre class="codehilite"><code class="language-mermaid">sequenceDiagram
+    participant Client as fast-inwd-processor-service
+    participant AL as fast-accountlookup-service
+    participant DB as Account Database
+    participant Mock as Mock Data Generator
+
+    Client-&gt;&gt;AL: LookupAccount(cdtrAcctId)
+    Note over AL: Validate request parameters
+
+    alt Production Mode
+        AL-&gt;&gt;DB: Query account database
+        DB-&gt;&gt;AL: Return account details
+    else Stub Mode (Current)
+        AL-&gt;&gt;Mock: Generate mock account data
+        Mock-&gt;&gt;AL: Return enrichment data
+    end
+
+    Note over AL: Determine account system (VAM/MDZ)
+    Note over AL: Build comprehensive enrichment data
+    Note over AL: Apply Singapore banking standards
+
+    AL-&gt;&gt;Client: AccountLookupResponse(enrichmentData)
+</code></pre>
+
+<hr />
+<h2 id="class-diagram">Class Diagram</h2>
+<pre class="codehilite"><code class="language-mermaid">classDiagram
+    class AccountLookupService {
+        +lookupAccount(request): Promise&lt;AccountLookupResponse&gt;
+        +healthCheck(): Promise&lt;HealthStatus&gt;
+        +validateRequest(request): string|null
+        +generateEnrichmentData(request): EnrichmentData
+        +handleSimulatedError(request): AccountLookupResponse
+        +createErrorResponse(request, code, message): AccountLookupResponse
+    }
+
+    class AccountLookupHandler {
+        -accountLookupService: AccountLookupService
+        +lookupAccount(call, callback): void
+        +healthCheck(call, callback): void
+        +getServiceInfo(call, callback): void
+        +validateLookupAccountRequest(request): string|null
+        +convertEnrichmentDataToGrpc(data): EnrichmentData
+    }
+
+    class MockDataGenerator {
+        +generateSingaporeAccountData(accountId): EnrichmentData
+        +simulateDelay(delayMs): Promise&lt;void&gt;
+        +shouldSimulateError(accountId): boolean
+        +createPhysicalAccountInfo(accountId, accountType): PhysicalAccountInfo
+        +generateAccountAttributes(accountType): AccountAttributes
+        +generateOperationalAttributes(): AccountOpsAttributes
+    }
+
+    class AccountUtils {
+        +getAccountSystem(accountId): string
+        +getAccountType(accountId): string
+        +normalizeAccountId(accountId): string
+        +shouldSimulateError(accountId): boolean
+        +generateBranchId(): string
+        +formatDate(date): string
+    }
+
+    AccountLookupService --&gt; MockDataGenerator
+    AccountLookupService --&gt; AccountUtils
+    AccountLookupHandler --&gt; AccountLookupService
+</code></pre>
+
+<hr />
+<h2 id="request-and-response-formats">Request and Response Formats</h2>
+<h3 id="grpc-service-definition">gRPC Service Definition</h3>
+<pre class="codehilite"><code class="language-protobuf">syntax = &quot;proto3&quot;;
+
+package gpp.g3.accountlookup;
+
+service AccountLookupService {
+  rpc LookupAccount(AccountLookupRequest) returns (AccountLookupResponse);
+  rpc HealthCheck(HealthCheckRequest) returns (HealthCheckResponse);
+  rpc GetServiceInfo(ServiceInfoRequest) returns (ServiceInfoResponse);
+}
+</code></pre>
+
+<h3 id="accountlookuprequest">AccountLookupRequest</h3>
+<pre class="codehilite"><code class="language-protobuf">message AccountLookupRequest {
+  string message_id = 1;               // UUID for tracking
+  string puid = 2;                     // G3I identifier
+  string cdtr_acct_id = 3;             // CdtrAcct ID to lookup
+  string message_type = 4;             // PACS message type for context
+  map&lt;string, string&gt; metadata = 5;    // Additional lookup context
+  int64 timestamp = 6;                 // Request timestamp
+}
+</code></pre>
+
+<h3 id="accountlookupresponse">AccountLookupResponse</h3>
+<pre class="codehilite"><code class="language-protobuf">message AccountLookupResponse {
+  string message_id = 1;               // Echo back UUID
+  string puid = 2;                     // Echo back G3I identifier
+  bool success = 3;                    // Whether lookup was successful
+  string error_message = 4;            // Error details if success = false
+  string error_code = 5;               // Categorized error code
+  EnrichmentData enrichment_data = 6;  // Full enrichment data
+  int64 processed_at = 7;              // When lookup completed
+  string lookup_source = 8;            // Source of lookup (STUB, CACHE, DATABASE)
+}
+</code></pre>
+
+<h3 id="enrichmentdata">EnrichmentData</h3>
+<pre class="codehilite"><code class="language-protobuf">message EnrichmentData {
+  string received_acct_id = 1;         // Original CdtrAcct ID
+  int32 lookup_status_code = 2;        // 200 for success, 404 for not found
+  string lookup_status_desc = 3;       // Human-readable status description
+  string normalized_acct_id = 4;       // Normalized account ID
+  string matched_acct_id = 5;          // Matched account ID
+  string partial_match = 6;            // Y or N
+  string is_physical = 7;              // Y or N
+  PhysicalAccountInfo physical_acct_info = 8; // Complex account information
+}
+</code></pre>
+
+<h3 id="physicalaccountinfo">PhysicalAccountInfo</h3>
+<pre class="codehilite"><code class="language-protobuf">message PhysicalAccountInfo {
+  string acct_id = 1;                  // Account ID
+  string acct_sys = 2;                 // Account system (VAM, MDZ, FAST, MEPS)
+  string acct_group = 3;               // Account group (SGB, etc.)
+  string country = 4;                  // Country (SG)
+  string branch_id = 5;                // Branch ID (nullable)
+  AccountAttributes acct_attributes = 6;
+  AccountOpsAttributes acct_ops_attributes = 7;
+  string bicfi = 8;                    // Bank identifier (ANZBSG3MXXX)
+  string currency_code = 9;            // Currency (SGD)
+}
+</code></pre>
+
+<hr />
+<h2 id="business-logic-implementation">Business Logic Implementation</h2>
+<h3 id="account-system-detection-logic">Account System Detection Logic</h3>
+<pre class="codehilite"><code class="language-typescript">static getAccountSystem(accountId: string): string {
+  const normalized = this.normalizeAccountId(accountId);
+
+  // VAM accounts: accounts starting with 999 or containing VAM
+  if (normalized.startsWith('999') || normalized.includes('VAM')) {
+    return 'VAM';
+  }
+
+  // FAST system for utility accounts
+  if (normalized.startsWith('SP') || normalized.includes('UTIL')) {
+    return 'FAST';
+  }
+
+  // MEPS for government/corporate accounts
+  if (normalized.startsWith('GOVT') || normalized.startsWith('CORP')) {
+    return 'MEPS';
+  }
+
+  // Default to MDZ for all other accounts
+  return 'MDZ';
+}
+</code></pre>
+
+<h3 id="account-type-detection">Account Type Detection</h3>
+<pre class="codehilite"><code class="language-typescript">static getAccountType(accountId: string): string {
+  const normalized = accountId.trim().toUpperCase();
+
+  if (normalized.startsWith('CORP')) {
+    return 'Corporate';
+  }
+  if (normalized.startsWith('GOVT')) {
+    return 'Government';
+  }
+  if (normalized.startsWith('UTIL') || normalized.startsWith('SP')) {
+    return 'Utility';
+  }
+  return 'Physical';
+}
+</code></pre>
+
+<h3 id="mock-data-generation">Mock Data Generation</h3>
+<pre class="codehilite"><code class="language-typescript">generateEnrichmentData(request: AccountLookupRequest): EnrichmentData {
+  const accountId = request.cdtrAcctId;
+  const accountSystem = AccountUtils.getAccountSystem(accountId);
+  const accountType = AccountUtils.getAccountType(accountId);
+
+  return {
+    receivedAcctId: accountId,
+    lookupStatusCode: 200,
+    lookupStatusDesc: 'Success',
+    normalizedAcctId: AccountUtils.normalizeAccountId(accountId),
+    matchedAcctId: accountId,
+    partialMatch: 'N',
+    isPhysical: 'Y',
+    physicalAcctInfo: this.createPhysicalAccountInfo(accountId, accountSystem, accountType)
+  };
+}
+</code></pre>
+
+<hr />
+<h2 id="account-types-and-business-rules">Account Types and Business Rules</h2>
+<h3 id="singapore-account-system-mapping">Singapore Account System Mapping</h3>
+<table>
+<thead>
+<tr>
+<th>Account Pattern</th>
+<th>Account System</th>
+<th>Use Case</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>999*</code> or <code>*VAM*</code></td>
+<td><strong>VAM</strong></td>
+<td>High-value accounts, require group limits</td>
+</tr>
+<tr>
+<td><code>SP*</code> or <code>*UTIL*</code></td>
+<td><strong>FAST</strong></td>
+<td>Utility payments, instant settlement</td>
+</tr>
+<tr>
+<td><code>GOVT*</code></td>
+<td><strong>MEPS</strong></td>
+<td>Government accounts, regulatory compliance</td>
+</tr>
+<tr>
+<td><code>CORP*</code></td>
+<td><strong>MEPS</strong></td>
+<td>Corporate accounts, bulk processing</td>
+</tr>
+<tr>
+<td>Other patterns</td>
+<td><strong>MDZ</strong></td>
+<td>Standard retail banking</td>
+</tr>
+</tbody>
+</table>
+<h3 id="account-type-classifications">Account Type Classifications</h3>
+<table>
+<thead>
+<tr>
+<th>Account Type</th>
+<th>Description</th>
+<th>System Preference</th>
+<th>Special Handling</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Physical</strong></td>
+<td>Standard customer accounts</td>
+<td>MDZ</td>
+<td>Standard validation</td>
+</tr>
+<tr>
+<td><strong>Corporate</strong></td>
+<td>Business accounts</td>
+<td>MEPS</td>
+<td>Enhanced due diligence</td>
+</tr>
+<tr>
+<td><strong>Government</strong></td>
+<td>Government entity accounts</td>
+<td>MEPS</td>
+<td>Regulatory reporting</td>
+</tr>
+<tr>
+<td><strong>Utility</strong></td>
+<td>Service provider accounts</td>
+<td>FAST</td>
+<td>Instant settlement</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="sample-response-data">Sample Response Data</h2>
+<h3 id="successful-lookup-response">Successful Lookup Response</h3>
+<pre class="codehilite"><code class="language-json">{
+  &quot;messageId&quot;: &quot;550e8400-e29b-41d4-a716-446655440000&quot;,
+  &quot;puid&quot;: &quot;G3I1234567890123&quot;,
+  &quot;success&quot;: true,
+  &quot;enrichmentData&quot;: {
+    &quot;receivedAcctId&quot;: &quot;999888777666&quot;,
+    &quot;lookupStatusCode&quot;: 200,
+    &quot;lookupStatusDesc&quot;: &quot;Success&quot;, 
+    &quot;normalizedAcctId&quot;: &quot;999888777666&quot;,
+    &quot;matchedAcctId&quot;: &quot;999888777666&quot;,
+    &quot;partialMatch&quot;: &quot;N&quot;,
+    &quot;isPhysical&quot;: &quot;Y&quot;,
+    &quot;physicalAcctInfo&quot;: {
+      &quot;acctId&quot;: &quot;999888777666&quot;,
+      &quot;acctSys&quot;: &quot;VAM&quot;,
+      &quot;acctGroup&quot;: &quot;SGB&quot;,
+      &quot;country&quot;: &quot;SG&quot;,
+      &quot;branchId&quot;: &quot;001&quot;,
+      &quot;acctAttributes&quot;: {
+        &quot;acctType&quot;: &quot;Physical&quot;,
+        &quot;acctCategory&quot;: &quot;SAVINGS&quot;,
+        &quot;acctPurpose&quot;: &quot;PERSONAL_BANKING&quot;
+      },
+      &quot;acctOpsAttributes&quot;: {
+        &quot;isActive&quot;: &quot;Yes&quot;,
+        &quot;acctStatus&quot;: &quot;Active&quot;,
+        &quot;openDate&quot;: &quot;15/03/2020&quot;,
+        &quot;expiryDate&quot;: &quot;31/12/2025&quot;,
+        &quot;restraints&quot;: {
+          &quot;stopAll&quot;: &quot;N&quot;,
+          &quot;stopDebits&quot;: &quot;N&quot;, 
+          &quot;stopCredits&quot;: &quot;N&quot;,
+          &quot;stopAtm&quot;: &quot;N&quot;,
+          &quot;stopEftPos&quot;: &quot;N&quot;,
+          &quot;stopUnknown&quot;: &quot;N&quot;,
+          &quot;warnings&quot;: []
+        }
+      },
+      &quot;bicfi&quot;: &quot;ANZBSG3MXXX&quot;,
+      &quot;currencyCode&quot;: &quot;SGD&quot;
+    }
+  },
+  &quot;processedAt&quot;: 1640995200000,
+  &quot;lookupSource&quot;: &quot;STUB&quot;
+}
+</code></pre>
+
+<h3 id="error-response-example">Error Response Example</h3>
+<pre class="codehilite"><code class="language-json">{
+  &quot;messageId&quot;: &quot;550e8400-e29b-41d4-a716-446655440000&quot;,
+  &quot;puid&quot;: &quot;G3I1234567890123&quot;,
+  &quot;success&quot;: false,
+  &quot;errorMessage&quot;: &quot;Account not found in system&quot;,
+  &quot;errorCode&quot;: &quot;LOOKUP_ACCOUNT_NOT_FOUND_002&quot;,
+  &quot;enrichmentData&quot;: null,
+  &quot;processedAt&quot;: 1640995200000,
+  &quot;lookupSource&quot;: &quot;STUB&quot;
+}
+</code></pre>
+
+<hr />
+<h2 id="error-handling">Error Handling</h2>
+<h3 id="error-scenarios-and-codes">Error Scenarios and Codes</h3>
+<table>
+<thead>
+<tr>
+<th>Scenario</th>
+<th>Error Code</th>
+<th>HTTP Status</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Account Not Found</strong></td>
+<td><code>LOOKUP_ACCOUNT_NOT_FOUND_002</code></td>
+<td>404</td>
+<td>Account ID not in system</td>
+</tr>
+<tr>
+<td><strong>Invalid Request</strong></td>
+<td><code>LOOKUP_INVALID_REQUEST_001</code></td>
+<td>400</td>
+<td>Missing required parameters</td>
+</tr>
+<tr>
+<td><strong>Service Unavailable</strong></td>
+<td><code>LOOKUP_SERVICE_ERROR_003</code></td>
+<td>500</td>
+<td>Internal service error</td>
+</tr>
+<tr>
+<td><strong>Timeout</strong></td>
+<td><code>LOOKUP_TIMEOUT_004</code></td>
+<td>504</td>
+<td>Request processing timeout</td>
+</tr>
+<tr>
+<td><strong>Rate Limited</strong></td>
+<td><code>LOOKUP_RATE_LIMITED_005</code></td>
+<td>429</td>
+<td>Too many requests</td>
+</tr>
+</tbody>
+</table>
+<h3 id="error-simulation-test-mode">Error Simulation (Test Mode)</h3>
+<pre class="codehilite"><code class="language-typescript">// Test accounts for error simulation
+const ERROR_SIMULATION_PATTERNS = {
+  'NOTFOUND': { code: 'LOOKUP_ACCOUNT_NOT_FOUND_002', status: 404 },
+  'ERROR': { code: 'LOOKUP_SERVICE_ERROR_003', status: 500 },
+  'TIMEOUT': { code: 'LOOKUP_TIMEOUT_004', status: 504 },
+  'INACTIVE': { code: 'LOOKUP_ACCOUNT_INACTIVE_006', status: 200 }
+};
+
+shouldSimulateError(accountId: string): boolean {
+  return Object.keys(ERROR_SIMULATION_PATTERNS)
+    .some(pattern =&gt; accountId.toUpperCase().includes(pattern));
+}
+</code></pre>
+
+<hr />
+<h2 id="configuration">Configuration</h2>
+<h3 id="environment-variables">Environment Variables</h3>
+<pre class="codehilite"><code class="language-bash"># gRPC Configuration
+GRPC_PORT=50059
+SERVICE_NAME=fast-accountlookup-service
+
+# Service Configuration
+LOG_LEVEL=info
+ENVIRONMENT=development
+IS_STUBBED=true
+COUNTRY=SG
+DEFAULT_CURRENCY=SGD
+TIMEZONE=Asia/Singapore
+DEFAULT_BANK_CODE=ANZBSG3MXXX
+
+# Mock Data Configuration
+MOCK_SUCCESS_RATE=0.95
+MOCK_RESPONSE_DELAY_MS=100
+ENABLE_ERROR_SCENARIOS=true
+DEFAULT_ACCOUNT_TYPE=Physical
+
+# Processing Configuration
+LOOKUP_TIMEOUT_MS=3000
+MAX_RETRY_ATTEMPTS=2
+RATE_LIMIT_REQUESTS_PER_MINUTE=1000
+
+# Database Configuration (Future)
+DATABASE_URL=postgresql://localhost:5432/accounts
+CACHE_TTL_SECONDS=300
+ENABLE_CACHE=true
+</code></pre>
+
+<hr />
+<h2 id="database-schema">Database Schema</h2>
+<p><strong>Note</strong>: Currently implemented as a stubbed service. Future production implementation will require the following database schema:</p>
+<h3 id="account-information-table">Account Information Table</h3>
+<pre class="codehilite"><code class="language-sql">CREATE TABLE account_information (
+  account_id VARCHAR(50) PRIMARY KEY,
+  account_system VARCHAR(20) NOT NULL,     -- VAM, MDZ, FAST, MEPS
+  account_group VARCHAR(20) NOT NULL,      -- SGB, RETAIL, CORPORATE
+  account_type VARCHAR(20) NOT NULL,       -- Physical, Virtual, Corporate
+  account_category VARCHAR(50),            -- SAVINGS, CURRENT, CORPORATE
+  account_purpose VARCHAR(100),            -- PERSONAL_BANKING, BUSINESS
+  country VARCHAR(3) NOT NULL DEFAULT 'SG',
+  currency_code VARCHAR(3) NOT NULL DEFAULT 'SGD',
+  bicfi VARCHAR(11) NOT NULL DEFAULT 'ANZBSG3MXXX',
+  branch_id VARCHAR(10),
+  is_active BOOLEAN NOT NULL DEFAULT true,
+  account_status VARCHAR(20) NOT NULL DEFAULT 'Active',
+  open_date DATE NOT NULL,
+  expiry_date DATE,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_account_system ON account_information(account_system);
+CREATE INDEX idx_account_type ON account_information(account_type);
+CREATE INDEX idx_country_currency ON account_information(country, currency_code);
+CREATE INDEX idx_status_active ON account_information(account_status, is_active);
+</code></pre>
+
+<h3 id="account-restraints-table">Account Restraints Table</h3>
+<pre class="codehilite"><code class="language-sql">CREATE TABLE account_restraints (
+  account_id VARCHAR(50) PRIMARY KEY,
+  stop_all BOOLEAN DEFAULT false,
+  stop_debits BOOLEAN DEFAULT false,
+  stop_credits BOOLEAN DEFAULT false,
+  stop_atm BOOLEAN DEFAULT false,
+  stop_eft_pos BOOLEAN DEFAULT false,
+  stop_unknown BOOLEAN DEFAULT false,
+  warnings TEXT[],
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (account_id) REFERENCES account_information(account_id)
+);
+</code></pre>
+
+<h3 id="account-lookup-cache">Account Lookup Cache</h3>
+<pre class="codehilite"><code class="language-sql">CREATE TABLE account_lookup_cache (
+  cache_key VARCHAR(255) PRIMARY KEY,
+  account_id VARCHAR(50) NOT NULL,
+  enrichment_data JSONB NOT NULL,
+  cached_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  expires_at TIMESTAMP NOT NULL,
+  hit_count INTEGER DEFAULT 0
+);
+
+CREATE INDEX idx_cache_expiry ON account_lookup_cache(expires_at);
+CREATE INDEX idx_cache_account ON account_lookup_cache(account_id);
+</code></pre>
+
+<hr />
+<h2 id="service-integration">Service Integration</h2>
+<h3 id="upstream-services">Upstream Services</h3>
+<ul>
+<li><strong>fast-inwd-processor-service</strong> (Port 50052): Primary consumer for account lookups</li>
+</ul>
+<h3 id="integration-pattern">Integration Pattern</h3>
+<pre class="codehilite"><code class="language-typescript">// Called by Inward Processor Service
+const lookupRequest: AccountLookupRequest = {
+  messageId: &quot;uuid&quot;,
+  puid: &quot;G3I123456789&quot;,
+  cdtrAcctId: &quot;999888777666&quot;,
+  messageType: &quot;PACS.008&quot;,
+  metadata: { country: &quot;SG&quot;, currency: &quot;SGD&quot; },
+  timestamp: Date.now()
+};
+
+const response = await accountLookupClient.LookupAccount(lookupRequest);
+</code></pre>
+
+<h3 id="response-integration">Response Integration</h3>
+<pre class="codehilite"><code class="language-typescript">// Response used by Inward Processor for enrichment
+if (response.success) {
+  const enrichmentData = response.enrichmentData;
+  const accountSystem = enrichmentData.physicalAcctInfo.acctSys; // VAM, MDZ, etc.
+
+  // Use account system for downstream routing decisions
+  if (accountSystem === 'VAM') {
+    // Route to VAM mediation
+  } else if (accountSystem === 'MDZ') {
+    // Route to standard processing
+  }
+}
+</code></pre>
+
+<hr />
+<h2 id="performance-characteristics">Performance Characteristics</h2>
+<h3 id="current-performance-stub-mode">Current Performance (Stub Mode)</h3>
+<ul>
+<li><strong>Average Response Time</strong>: ~110ms</li>
+<li><strong>Success Rate</strong>: 100% (configurable via mock settings)</li>
+<li><strong>Concurrent Requests</strong>: Limited by gRPC server configuration</li>
+<li><strong>Memory Usage</strong>: Low (stateless mock data generation)</li>
+</ul>
+<h3 id="target-production-performance">Target Production Performance</h3>
+<ul>
+<li><strong>Response Time</strong>: &lt; 100ms (95th percentile)</li>
+<li><strong>Throughput</strong>: 5000+ requests per second</li>
+<li><strong>Cache Hit Rate</strong>: &gt; 80% for frequently accessed accounts</li>
+<li><strong>Database Query Time</strong>: &lt; 50ms average</li>
+</ul>
+<h3 id="scalability-considerations">Scalability Considerations</h3>
+<ul>
+<li><strong>Horizontal Scaling</strong>: Multiple service instances behind load balancer</li>
+<li><strong>Caching Strategy</strong>: Redis/Memcached for account data</li>
+<li><strong>Database Optimization</strong>: Read replicas, connection pooling</li>
+<li><strong>Circuit Breaker</strong>: Fail fast on database issues</li>
+</ul>
+<hr />
+<h2 id="monitoring-and-health-checks">Monitoring and Health Checks</h2>
+<h3 id="health-check-implementation">Health Check Implementation</h3>
+<pre class="codehilite"><code class="language-typescript">async healthCheck(): Promise&lt;HealthStatus&gt; {
+  if (config.isStubbed) {
+    return {
+      status: 'SERVING',
+      message: 'Account lookup service is healthy (stub mode)',
+      timestamp: Date.now(),
+      capabilities: [
+        'account-lookup',
+        'singapore-banking-data', 
+        'mock-data-generation',
+        'error-simulation'
+      ]
+    };
+  }
+
+  // Production health checks
+  const dbHealth = await this.checkDatabaseHealth();
+  const cacheHealth = await this.checkCacheHealth();
+
+  const isHealthy = dbHealth &amp;&amp; cacheHealth;
+
+  return {
+    status: isHealthy ? 'SERVING' : 'NOT_SERVING',
+    message: isHealthy ? 'All systems operational' : 'Service degraded',
+    timestamp: Date.now(),
+    dependencies: {
+      database: dbHealth,
+      cache: cacheHealth
+    }
+  };
+}
+</code></pre>
+
+<h3 id="monitoring-metrics">Monitoring Metrics</h3>
+<pre class="codehilite"><code class="language-typescript">// Prometheus metrics
+const metrics = {
+  lookupRequests: new Counter({
+    name: 'accountlookup_requests_total',
+    help: 'Total account lookup requests',
+    labelNames: ['account_type', 'account_system', 'status']
+  }),
+
+  lookupDuration: new Histogram({
+    name: 'accountlookup_duration_seconds', 
+    help: 'Account lookup duration',
+    buckets: [0.01, 0.05, 0.1, 0.2, 0.5, 1.0]
+  }),
+
+  cacheHitRate: new Gauge({
+    name: 'accountlookup_cache_hit_rate',
+    help: 'Cache hit rate percentage'
+  })
+};
+</code></pre>
+
+<hr />
+<h2 id="security-considerations">Security Considerations</h2>
+<h3 id="data-protection">Data Protection</h3>
+<ul>
+<li><strong>PII Handling</strong>: Minimal exposure of account holder information</li>
+<li><strong>Data Encryption</strong>: Encrypt sensitive data in transit and at rest</li>
+<li><strong>Access Logging</strong>: Log all account access for audit purposes</li>
+<li><strong>Data Masking</strong>: Mask account details in logs</li>
+</ul>
+<h3 id="input-validation">Input Validation</h3>
+<pre class="codehilite"><code class="language-typescript">validateLookupAccountRequest(request: any): string | null {
+  if (!request.message_id || request.message_id.length &lt; 8) {
+    return 'message_id must be at least 8 characters long';
+  }
+
+  if (!request.puid || request.puid.length &lt; 8) {
+    return 'puid must be at least 8 characters long';
+  }
+
+  if (!request.cdtr_acct_id || request.cdtr_acct_id.length &lt; 3) {
+    return 'cdtr_acct_id must be at least 3 characters long';
+  }
+
+  const validMessageTypes = ['pacs.008.001.10', 'pacs.002.001.15', 'pacs.004.001.12'];
+  if (!validMessageTypes.includes(request.message_type)) {
+    return `message_type must be one of: ${validMessageTypes.join(', ')}`;
+  }
+
+  return null;
+}
+</code></pre>
+
+<hr />
+<h2 id="migration-to-production">Migration to Production</h2>
+<h3 id="phase-1-database-integration">Phase 1: Database Integration</h3>
+<ul>
+<li>Implement PostgreSQL/Cloud Spanner backend</li>
+<li>Create account information tables</li>
+<li>Import Singapore banking account data</li>
+<li>Implement caching layer</li>
+</ul>
+<h3 id="phase-2-performance-optimization">Phase 2: Performance Optimization</h3>
+<ul>
+<li>Add database connection pooling</li>
+<li>Implement read replicas</li>
+<li>Optimize query performance</li>
+<li>Add comprehensive monitoring</li>
+</ul>
+<h3 id="phase-3-advanced-features">Phase 3: Advanced Features</h3>
+<ul>
+<li>Real-time account status updates</li>
+<li>Advanced account matching algorithms</li>
+<li>Multi-market support</li>
+<li>Enhanced error handling</li>
+</ul>
+<h3 id="deployment-strategy">Deployment Strategy</h3>
+<ul>
+<li><strong>Blue-Green Deployment</strong>: Zero-downtime migration</li>
+<li><strong>Feature Flags</strong>: Gradual rollout of production features</li>
+<li><strong>Monitoring</strong>: Comprehensive observability during migration</li>
+<li><strong>Rollback Plan</strong>: Quick revert to stub mode if needed </li>
+</ul>
+</div>
+
+<div class="service-section" id="reference-data">
+<h1 id="fast-reference-data-service-design-document">Fast Reference Data Service - Design Document</h1>
+<h2 id="overview">Overview</h2>
+<p>The <strong>Fast Reference Data Service</strong> is a gRPC-based microservice that provides authentication method lookup for the Singapore G3 Payment Platform. It determines the appropriate authentication method (GROUPLIMIT, AFPTHENLIMIT, AFPONLY) based on account information and business rules, enabling intelligent routing and processing decisions.</p>
+<h3 id="key-responsibilities">Key Responsibilities</h3>
+<ul>
+<li>Determine authentication methods based on account patterns and business rules</li>
+<li>Provide reference data for risk assessment and limit profiling</li>
+<li>Support multiple account systems (VAM, MDZ, MEPS, FAST)</li>
+<li>Generate comprehensive reference data details for downstream processing</li>
+<li>Implement Singapore-specific business rules and compliance requirements</li>
+</ul>
+<h3 id="service-details">Service Details</h3>
+<ul>
+<li><strong>Service Type</strong>: gRPC Service</li>
+<li><strong>Port</strong>: 50060</li>
+<li><strong>Package</strong>: <code>gpp.g3.referencedata</code></li>
+<li><strong>Technology Stack</strong>: TypeScript, gRPC</li>
+<li><strong>Implementation</strong>: Rule-based authentication method determination</li>
+</ul>
+<hr />
+<h2 id="sequence-diagram">Sequence Diagram</h2>
+<pre class="codehilite"><code class="language-mermaid">sequenceDiagram
+    participant Client as fast-inwd-processor-service
+    participant RDS as fast-referencedata-service
+    participant Rules as Business Rules Engine
+    participant Cache as Reference Data Cache
+
+    Client-&gt;&gt;RDS: LookupAuthMethod(acctSys, acctId)
+    Note over RDS: Validate request parameters
+
+    alt Cache Hit
+        RDS-&gt;&gt;Cache: Check cache for auth method
+        Cache-&gt;&gt;RDS: Return cached result
+    else Cache Miss
+        RDS-&gt;&gt;Rules: Apply business rules
+        Rules-&gt;&gt;Rules: Analyze account ID patterns
+        Rules-&gt;&gt;Rules: Determine risk level
+        Rules-&gt;&gt;Rules: Set limit profile
+        Rules-&gt;&gt;RDS: Return auth method
+        RDS-&gt;&gt;Cache: Store result in cache
+    end
+
+    Note over RDS: Create reference data details
+    Note over RDS: Apply Singapore compliance rules
+
+    RDS-&gt;&gt;Client: AuthMethodResponse(authMethod, details)
+</code></pre>
+
+<hr />
+<h2 id="class-diagram">Class Diagram</h2>
+<pre class="codehilite"><code class="language-mermaid">classDiagram
+    class ReferenceDataService {
+        -useMockData: boolean
+        +lookupAuthMethod(request): Promise&lt;AuthMethodResponse&gt;
+        +validateRequest(request): string|null
+        +determineAuthMethod(accountId): string
+        +createReferenceDataDetails(request, authMethod): ReferenceDataDetails
+        +determineRiskLevel(authMethod): string
+        +determineLimitProfile(acctSys, acctGrp, authMethod): string
+        +createErrorResponse(request, errorMessage): AuthMethodResponse
+    }
+
+    class ReferenceDataHandler {
+        -referenceDataService: ReferenceDataService
+        +lookupAuthMethod(call, callback): void
+        +healthCheck(call, callback): void
+        +convertRefDataDetailsToGrpc(details): any
+    }
+
+    class BusinessRulesEngine {
+        +applyAccountPatternRules(accountId): string
+        +applyLengthBasedRules(accountId): string
+        +applySystemSpecificRules(acctSys, accountId): string
+        +getSingaporeComplianceRules(): ComplianceRules
+        +determineApprovalRequirement(authMethod): boolean
+    }
+
+    class ReferenceDataCache {
+        -cache: Map&lt;string, CacheEntry&gt;
+        +get(key): CacheEntry|null
+        +set(key, value, ttl): void
+        +invalidate(key): void
+        +cleanup(): void
+    }
+
+    class Logger {
+        +logAuthMethodRequest(messageId, puid, acctId, acctSys): void
+        +logAuthMethodResponse(messageId, authMethod, success, processingTime): void
+        +logError(messageId, error, context): void
+    }
+
+    ReferenceDataService --&gt; BusinessRulesEngine
+    ReferenceDataService --&gt; ReferenceDataCache
+    ReferenceDataService --&gt; Logger
+    ReferenceDataHandler --&gt; ReferenceDataService
+</code></pre>
+
+<hr />
+<h2 id="request-and-response-formats">Request and Response Formats</h2>
+<h3 id="grpc-service-definition">gRPC Service Definition</h3>
+<pre class="codehilite"><code class="language-protobuf">syntax = &quot;proto3&quot;;
+
+package gpp.g3.referencedata;
+
+service ReferenceDataService {
+  rpc LookupAuthMethod(AuthMethodRequest) returns (AuthMethodResponse);
+  rpc HealthCheck(HealthCheckRequest) returns (HealthCheckResponse);
+}
+</code></pre>
+
+<h3 id="authmethodrequest">AuthMethodRequest</h3>
+<pre class="codehilite"><code class="language-protobuf">message AuthMethodRequest {
+  string message_id = 1;               // UUID for tracking
+  string puid = 2;                     // G3I identifier
+  string acct_sys = 3;                 // Account system (MDZ, VAM, etc.)
+  string acct_grp = 4;                 // Account group (SGB, etc.)
+  string acct_id = 5;                  // Account ID
+  string country = 6;                  // Country code (SG)
+  string currency_code = 7;            // Currency code (SGD)
+  map&lt;string, string&gt; metadata = 8;    // Additional context
+  int64 timestamp = 9;                 // Request timestamp
+}
+</code></pre>
+
+<h3 id="authmethodresponse">AuthMethodResponse</h3>
+<pre class="codehilite"><code class="language-protobuf">message AuthMethodResponse {
+  string message_id = 1;               // Echo back UUID
+  string puid = 2;                     // Echo back G3I identifier
+  bool success = 3;                    // Whether lookup was successful
+  string auth_method = 4;              // AFPONLY, AFPTHENLIMIT, GROUPLIMIT
+  string error_message = 5;            // Error details if success = false
+  string error_code = 6;               // Categorized error code
+  ReferenceDataDetails ref_data_details = 7; // Additional reference data
+  int64 processed_at = 8;              // When lookup completed
+  string lookup_source = 9;            // Source of lookup (STUB, CACHE, DATABASE)
+}
+</code></pre>
+
+<h3 id="referencedatadetails">ReferenceDataDetails</h3>
+<pre class="codehilite"><code class="language-protobuf">message ReferenceDataDetails {
+  string acct_sys = 1;                 // Account system
+  string acct_grp = 2;                 // Account group
+  string acct_id = 3;                  // Account ID
+  string country = 4;                  // Country
+  string currency_code = 5;            // Currency code
+  string auth_method = 6;              // Authentication method
+  string risk_level = 7;               // Risk level (LOW, MEDIUM, HIGH)
+  string limit_profile = 8;            // Limit profile identifier
+  bool requires_approval = 9;          // Whether requires approval
+  map&lt;string, string&gt; additional_attributes = 10; // Additional attributes
+}
+</code></pre>
+
+<hr />
+<h2 id="business-logic-and-authentication-rules">Business Logic and Authentication Rules</h2>
+<h3 id="authentication-method-determination-logic">Authentication Method Determination Logic</h3>
+<pre class="codehilite"><code class="language-typescript">determineAuthMethod(acctId: string): string {
+  const normalizedAcctId = acctId.trim().toUpperCase();
+
+  // Pattern-based authentication method determination
+  if (normalizedAcctId.startsWith('999') || normalizedAcctId.startsWith('VAM')) {
+    // VAM accounts typically require group limits
+    return 'GROUPLIMIT';
+  }
+
+  if (normalizedAcctId.startsWith('888') || normalizedAcctId.includes('CORP')) {
+    // Corporate accounts use AFP then limits
+    return 'AFPTHENLIMIT';
+  }
+
+  if (normalizedAcctId.startsWith('777') || normalizedAcctId.includes('PRIV')) {
+    // Private accounts use AFP only
+    return 'AFPONLY';
+  }
+
+  // Account ID length based rules
+  if (normalizedAcctId.length &gt;= 12) {
+    // Long account IDs typically require group limits
+    return 'GROUPLIMIT';
+  }
+
+  if (normalizedAcctId.length &gt;= 8) {
+    // Medium length accounts use AFP then limits
+    return 'AFPTHENLIMIT';
+  }
+
+  // Default to AFP only for other cases
+  return 'AFPONLY';
+}
+</code></pre>
+
+<h3 id="authentication-method-classifications">Authentication Method Classifications</h3>
+<table>
+<thead>
+<tr>
+<th>Authentication Method</th>
+<th>Use Case</th>
+<th>Processing Requirements</th>
+<th>Limit Checking</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>GROUPLIMIT</strong></td>
+<td>High-value VAM accounts, Government accounts</td>
+<td>Group-level limit validation required</td>
+<td>Mandatory fire &amp; forget</td>
+</tr>
+<tr>
+<td><strong>AFPTHENLIMIT</strong></td>
+<td>Corporate accounts, Enhanced validation</td>
+<td>AFP validation + individual limits</td>
+<td>Individual account limits</td>
+</tr>
+<tr>
+<td><strong>AFPONLY</strong></td>
+<td>Standard retail accounts</td>
+<td>Anti-Fraud Platform only</td>
+<td>No additional limits</td>
+</tr>
+</tbody>
+</table>
+<h3 id="risk-level-determination">Risk Level Determination</h3>
+<pre class="codehilite"><code class="language-typescript">private determineRiskLevel(authMethod: string): string {
+  switch (authMethod) {
+    case 'GROUPLIMIT':
+      return 'HIGH';     // Requires group-level oversight
+    case 'AFPTHENLIMIT':
+      return 'MEDIUM';   // Enhanced validation required
+    case 'AFPONLY':
+      return 'LOW';      // Standard processing
+    default:
+      return 'MEDIUM';   // Conservative default
+  }
+}
+</code></pre>
+
+<h3 id="limit-profile-assignment">Limit Profile Assignment</h3>
+<pre class="codehilite"><code class="language-typescript">private determineLimitProfile(acctSys: string, acctGrp: string, authMethod: string): string {
+  const base = `${acctSys}_${acctGrp}`;
+
+  switch (authMethod) {
+    case 'GROUPLIMIT':
+      return `${base}_GROUP_LIMITS`;
+    case 'AFPTHENLIMIT':
+      return `${base}_AFP_THEN_LIMITS`;
+    case 'AFPONLY':
+      return `${base}_AFP_ONLY`;
+    default:
+      return `${base}_STANDARD`;
+  }
+}
+</code></pre>
+
+<hr />
+<h2 id="sample-response-data">Sample Response Data</h2>
+<h3 id="successful-authentication-method-lookup">Successful Authentication Method Lookup</h3>
+<pre class="codehilite"><code class="language-json">{
+  &quot;messageId&quot;: &quot;550e8400-e29b-41d4-a716-446655440000&quot;,
+  &quot;puid&quot;: &quot;G3I1234567890123&quot;,
+  &quot;success&quot;: true,
+  &quot;authMethod&quot;: &quot;GROUPLIMIT&quot;,
+  &quot;refDataDetails&quot;: {
+    &quot;acctSys&quot;: &quot;VAM&quot;,
+    &quot;acctGrp&quot;: &quot;SGB&quot;,
+    &quot;acctId&quot;: &quot;999888777666&quot;,
+    &quot;country&quot;: &quot;SG&quot;,
+    &quot;currencyCode&quot;: &quot;SGD&quot;,
+    &quot;authMethod&quot;: &quot;GROUPLIMIT&quot;,
+    &quot;riskLevel&quot;: &quot;HIGH&quot;,
+    &quot;limitProfile&quot;: &quot;VAM_SGB_GROUP_LIMITS&quot;,
+    &quot;requiresApproval&quot;: true,
+    &quot;additionalAttributes&quot;: {
+      &quot;evaluatedAt&quot;: &quot;2024-01-01T10:00:00Z&quot;,
+      &quot;evaluationRules&quot;: &quot;account_id_pattern_based&quot;,
+      &quot;sourceSystem&quot;: &quot;fast-referencedata-service&quot;,
+      &quot;complianceLevel&quot;: &quot;SINGAPORE_ENHANCED&quot;,
+      &quot;authenticationTier&quot;: &quot;TIER_3&quot;
+    }
+  },
+  &quot;processedAt&quot;: 1640995200000,
+  &quot;lookupSource&quot;: &quot;STUB&quot;
+}
+</code></pre>
+
+<h3 id="different-authentication-methods-by-account-type">Different Authentication Methods by Account Type</h3>
+<h4 id="afponly-example-standard-retail">AFPONLY Example (Standard Retail)</h4>
+<pre class="codehilite"><code class="language-json">{
+  &quot;authMethod&quot;: &quot;AFPONLY&quot;,
+  &quot;refDataDetails&quot;: {
+    &quot;riskLevel&quot;: &quot;LOW&quot;,
+    &quot;limitProfile&quot;: &quot;MDZ_SGB_AFP_ONLY&quot;,
+    &quot;requiresApproval&quot;: false,
+    &quot;additionalAttributes&quot;: {
+      &quot;authenticationTier&quot;: &quot;TIER_1&quot;,
+      &quot;processingPriority&quot;: &quot;STANDARD&quot;
+    }
+  }
+}
+</code></pre>
+
+<h4 id="afpthenlimit-example-corporate">AFPTHENLIMIT Example (Corporate)</h4>
+<pre class="codehilite"><code class="language-json">{
+  &quot;authMethod&quot;: &quot;AFPTHENLIMIT&quot;, 
+  &quot;refDataDetails&quot;: {
+    &quot;riskLevel&quot;: &quot;MEDIUM&quot;,
+    &quot;limitProfile&quot;: &quot;MDZ_SGB_AFP_THEN_LIMITS&quot;,
+    &quot;requiresApproval&quot;: false,
+    &quot;additionalAttributes&quot;: {
+      &quot;authenticationTier&quot;: &quot;TIER_2&quot;,
+      &quot;processingPriority&quot;: &quot;ENHANCED&quot;
+    }
+  }
+}
+</code></pre>
+
+<hr />
+<h2 id="business-rules-engine">Business Rules Engine</h2>
+<h3 id="account-pattern-rules">Account Pattern Rules</h3>
+<table>
+<thead>
+<tr>
+<th>Pattern</th>
+<th>Auth Method</th>
+<th>Rationale</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>999*</code></td>
+<td>GROUPLIMIT</td>
+<td>VAM high-value accounts</td>
+</tr>
+<tr>
+<td><code>VAM*</code></td>
+<td>GROUPLIMIT</td>
+<td>Explicit VAM system accounts</td>
+</tr>
+<tr>
+<td><code>888*</code>, <code>*CORP*</code></td>
+<td>AFPTHENLIMIT</td>
+<td>Corporate account enhanced validation</td>
+</tr>
+<tr>
+<td><code>777*</code>, <code>*PRIV*</code></td>
+<td>AFPONLY</td>
+<td>Private account standard processing</td>
+</tr>
+<tr>
+<td><code>GOVT*</code></td>
+<td>GROUPLIMIT</td>
+<td>Government accounts require oversight</td>
+</tr>
+<tr>
+<td>Length ≥ 12 chars</td>
+<td>GROUPLIMIT</td>
+<td>Complex account structures</td>
+</tr>
+<tr>
+<td>Length 8-11 chars</td>
+<td>AFPTHENLIMIT</td>
+<td>Medium complexity accounts</td>
+</tr>
+<tr>
+<td>Length &lt; 8 chars</td>
+<td>AFPONLY</td>
+<td>Simple account structures</td>
+</tr>
+</tbody>
+</table>
+<h3 id="singapore-compliance-rules">Singapore Compliance Rules</h3>
+<pre class="codehilite"><code class="language-typescript">const SINGAPORE_COMPLIANCE_RULES = {
+  mandatoryFields: ['acct_sys', 'acct_id', 'country', 'currency_code'],
+  requiredCurrency: 'SGD',
+  requiredCountry: 'SG',
+  authMethodValidation: {
+    'GROUPLIMIT': {
+      requiresApproval: true,
+      mandatoryLimitCheck: true,
+      riskLevel: 'HIGH'
+    },
+    'AFPTHENLIMIT': {
+      requiresApproval: false,
+      mandatoryLimitCheck: false,
+      riskLevel: 'MEDIUM'
+    },
+    'AFPONLY': {
+      requiresApproval: false,
+      mandatoryLimitCheck: false,
+      riskLevel: 'LOW'
+    }
+  }
+};
+</code></pre>
+
+<hr />
+<h2 id="reference-data-details-structure">Reference Data Details Structure</h2>
+<h3 id="complete-reference-data-response">Complete Reference Data Response</h3>
+<pre class="codehilite"><code class="language-typescript">interface ReferenceDataDetails {
+  acctSys: string;              // VAM, MDZ, MEPS, FAST
+  acctGrp: string;              // SGB, RETAIL, CORPORATE
+  acctId: string;               // Original account ID
+  country: string;              // SG (Singapore)
+  currencyCode: string;         // SGD
+  authMethod: string;           // GROUPLIMIT, AFPTHENLIMIT, AFPONLY
+  riskLevel: string;            // LOW, MEDIUM, HIGH
+  limitProfile: string;         // {SYSTEM}_{GROUP}_{METHOD}
+  requiresApproval: boolean;    // true for GROUPLIMIT
+  additionalAttributes: {
+    evaluatedAt: string;        // ISO timestamp
+    evaluationRules: string;    // Rule set used
+    sourceSystem: string;       // Service identifier
+    complianceLevel: string;    // SINGAPORE_ENHANCED
+    authenticationTier: string; // TIER_1, TIER_2, TIER_3
+    processingPriority: string; // STANDARD, ENHANCED, PRIORITY
+    [key: string]: string;      // Extensible for future attributes
+  };
+}
+</code></pre>
+
+<hr />
+<h2 id="configuration">Configuration</h2>
+<h3 id="environment-variables">Environment Variables</h3>
+<pre class="codehilite"><code class="language-bash"># gRPC Configuration
+GRPC_PORT=50060
+SERVICE_NAME=fast-referencedata-service
+
+# Service Configuration
+LOG_LEVEL=info
+ENVIRONMENT=development
+COUNTRY=SG
+DEFAULT_CURRENCY=SGD
+
+# Business Rules Configuration
+AUTH_METHOD_TIMEOUT_MS=3000
+MAX_RETRY_ATTEMPTS=3
+RETRY_BACKOFF_MS=1000
+USE_MOCK_DATA=true
+
+# Cache Configuration
+CACHE_TTL_SECONDS=300
+CACHE_MAX_SIZE=10000
+ENABLE_CACHE=true
+
+# Compliance Configuration
+COMPLIANCE_LEVEL=SINGAPORE_ENHANCED
+REQUIRED_CURRENCY=SGD
+REQUIRED_COUNTRY=SG
+ENABLE_STRICT_VALIDATION=true
+</code></pre>
+
+<hr />
+<h2 id="database-schema">Database Schema</h2>
+<p><strong>Note</strong>: Currently implemented with in-memory business rules. Future production implementation may require:</p>
+<h3 id="authentication-rules-table">Authentication Rules Table</h3>
+<pre class="codehilite"><code class="language-sql">CREATE TABLE auth_method_rules (
+  rule_id SERIAL PRIMARY KEY,
+  rule_name VARCHAR(100) NOT NULL,
+  account_pattern VARCHAR(100),           -- Regex pattern for account matching
+  account_system VARCHAR(20),             -- VAM, MDZ, MEPS, FAST
+  account_group VARCHAR(20),              -- SGB, RETAIL, CORPORATE
+  min_length INTEGER,
+  max_length INTEGER,
+  auth_method VARCHAR(20) NOT NULL,       -- GROUPLIMIT, AFPTHENLIMIT, AFPONLY
+  risk_level VARCHAR(10) NOT NULL,        -- LOW, MEDIUM, HIGH
+  requires_approval BOOLEAN DEFAULT false,
+  priority INTEGER DEFAULT 100,           -- Rule precedence (lower = higher priority)
+  is_active BOOLEAN DEFAULT true,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_auth_rules_pattern ON auth_method_rules(account_pattern);
+CREATE INDEX idx_auth_rules_system ON auth_method_rules(account_system);
+CREATE INDEX idx_auth_rules_priority ON auth_method_rules(priority, is_active);
+</code></pre>
+
+<h3 id="reference-data-cache-table">Reference Data Cache Table</h3>
+<pre class="codehilite"><code class="language-sql">CREATE TABLE reference_data_cache (
+  cache_key VARCHAR(255) PRIMARY KEY,
+  account_id VARCHAR(50) NOT NULL,
+  account_system VARCHAR(20) NOT NULL,
+  auth_method VARCHAR(20) NOT NULL,
+  ref_data_details JSONB NOT NULL,
+  cached_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  expires_at TIMESTAMP NOT NULL,
+  hit_count INTEGER DEFAULT 0
+);
+
+CREATE INDEX idx_refdata_cache_expiry ON reference_data_cache(expires_at);
+CREATE INDEX idx_refdata_cache_account ON reference_data_cache(account_id, account_system);
+</code></pre>
+
+<hr />
+<h2 id="service-integration">Service Integration</h2>
+<h3 id="integration-with-inward-processor-service">Integration with Inward Processor Service</h3>
+<pre class="codehilite"><code class="language-typescript">// Called by fast-inwd-processor-service after account lookup
+const authMethodRequest: AuthMethodRequest = {
+  messageId: &quot;uuid&quot;,
+  puid: &quot;G3I123456789&quot;,
+  acctSys: &quot;VAM&quot;,           // From account lookup response
+  acctGrp: &quot;SGB&quot;,           // From account lookup response
+  acctId: &quot;999888777666&quot;,   // Original account ID
+  country: &quot;SG&quot;,            // Market context
+  currencyCode: &quot;SGD&quot;,      // Market context
+  metadata: {
+    messageType: &quot;PACS.008&quot;,
+    processingTime: Date.now().toString()
+  },
+  timestamp: Date.now()
+};
+
+const response = await referenceDataClient.LookupAuthMethod(authMethodRequest);
+</code></pre>
+
+<h3 id="response-integration">Response Integration</h3>
+<pre class="codehilite"><code class="language-typescript">// Response used for downstream routing decisions
+if (response.success) {
+  const authMethod = response.authMethod;
+  const requiresApproval = response.refDataDetails.requiresApproval;
+
+  // Integration with orchestrator service
+  if (authMethod === 'GROUPLIMIT') {
+    // Route to limit check service (fire &amp; forget)
+    await sendToLimitCheckService(message);
+  }
+
+  if (authMethod === 'AFPTHENLIMIT') {
+    // Enhanced validation required
+    await performEnhancedValidation(message);
+  }
+
+  // Standard AFP processing for all methods
+  await sendToAntifraudPlatform(message);
+}
+</code></pre>
+
+<hr />
+<h2 id="error-handling">Error Handling</h2>
+<h3 id="error-scenarios-and-responses">Error Scenarios and Responses</h3>
+<table>
+<thead>
+<tr>
+<th>Error Type</th>
+<th>Error Code</th>
+<th>Description</th>
+<th>Recovery Action</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Invalid Request</strong></td>
+<td><code>REFDATA_INVALID_REQUEST</code></td>
+<td>Missing required fields</td>
+<td>Return validation error</td>
+</tr>
+<tr>
+<td><strong>Business Rule Error</strong></td>
+<td><code>REFDATA_RULE_ERROR</code></td>
+<td>Rule evaluation failure</td>
+<td>Use default auth method</td>
+</tr>
+<tr>
+<td><strong>Service Unavailable</strong></td>
+<td><code>REFDATA_SERVICE_ERROR</code></td>
+<td>Internal service error</td>
+<td>Retry with exponential backoff</td>
+</tr>
+<tr>
+<td><strong>Unknown Account Pattern</strong></td>
+<td><code>REFDATA_UNKNOWN_PATTERN</code></td>
+<td>No matching rules</td>
+<td>Default to AFPONLY</td>
+</tr>
+</tbody>
+</table>
+<h3 id="error-response-example">Error Response Example</h3>
+<pre class="codehilite"><code class="language-json">{
+  &quot;messageId&quot;: &quot;550e8400-e29b-41d4-a716-446655440000&quot;,
+  &quot;puid&quot;: &quot;G3I1234567890123&quot;,
+  &quot;success&quot;: false,
+  &quot;authMethod&quot;: &quot;&quot;,
+  &quot;errorMessage&quot;: &quot;Required field 'acct_id' is missing&quot;,
+  &quot;errorCode&quot;: &quot;REFDATA_INVALID_REQUEST&quot;,
+  &quot;refDataDetails&quot;: null,
+  &quot;processedAt&quot;: 1640995200000,
+  &quot;lookupSource&quot;: &quot;STUB&quot;
+}
+</code></pre>
+
+<hr />
+<h2 id="performance-characteristics">Performance Characteristics</h2>
+<h3 id="current-performance">Current Performance</h3>
+<ul>
+<li><strong>Average Response Time</strong>: ~50ms</li>
+<li><strong>Success Rate</strong>: 100% (rule-based deterministic)</li>
+<li><strong>Throughput</strong>: 2000+ requests per second</li>
+<li><strong>Memory Usage</strong>: Low (in-memory rule evaluation)</li>
+</ul>
+<h3 id="caching-strategy">Caching Strategy</h3>
+<pre class="codehilite"><code class="language-typescript">// In-memory cache with TTL
+class ReferenceDataCache {
+  private cache = new Map&lt;string, CacheEntry&gt;();
+
+  generateCacheKey(request: AuthMethodRequest): string {
+    return `${request.acctSys}:${request.acctId}:${request.country}`;
+  }
+
+  get(key: string): CacheEntry | null {
+    const entry = this.cache.get(key);
+    if (entry &amp;&amp; entry.expiresAt &gt; Date.now()) {
+      entry.hitCount++;
+      return entry;
+    }
+    this.cache.delete(key);
+    return null;
+  }
+
+  set(key: string, value: any, ttlSeconds: number): void {
+    this.cache.set(key, {
+      value,
+      cachedAt: Date.now(),
+      expiresAt: Date.now() + (ttlSeconds * 1000),
+      hitCount: 0
+    });
+  }
+}
+</code></pre>
+
+<hr />
+<h2 id="monitoring-and-health-checks">Monitoring and Health Checks</h2>
+<h3 id="health-check-implementation">Health Check Implementation</h3>
+<pre class="codehilite"><code class="language-typescript">async healthCheck(): Promise&lt;HealthCheckResponse&gt; {
+  try {
+    // Test business rules engine
+    const testAuthMethod = this.determineAuthMethod('TEST123');
+
+    if (!testAuthMethod) {
+      return {
+        status: 'NOT_SERVING',
+        message: 'Business rules engine failure',
+        timestamp: Date.now()
+      };
+    }
+
+    return {
+      status: 'SERVING',
+      message: 'Reference data service is healthy and ready to serve requests',
+      timestamp: Date.now(),
+      additionalInfo: {
+        activeRules: this.getActiveRulesCount(),
+        cacheSize: this.cache.size,
+        processingMode: this.useMockData ? 'MOCK' : 'PRODUCTION'
+      }
+    };
+
+  } catch (error) {
+    return {
+      status: 'NOT_SERVING',
+      message: `Health check failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      timestamp: Date.now()
+    };
+  }
+}
+</code></pre>
+
+<h3 id="monitoring-metrics">Monitoring Metrics</h3>
+<pre class="codehilite"><code class="language-typescript">// Prometheus metrics
+const metrics = {
+  authMethodRequests: new Counter({
+    name: 'referencedata_requests_total',
+    help: 'Total authentication method requests',
+    labelNames: ['auth_method', 'account_system', 'risk_level']
+  }),
+
+  authMethodDuration: new Histogram({
+    name: 'referencedata_duration_seconds',
+    help: 'Authentication method lookup duration',
+    buckets: [0.001, 0.005, 0.01, 0.05, 0.1, 0.5]
+  }),
+
+  ruleEvaluations: new Counter({
+    name: 'referencedata_rule_evaluations_total',
+    help: 'Business rule evaluations',
+    labelNames: ['rule_type', 'result']
+  }),
+
+  cacheHitRate: new Gauge({
+    name: 'referencedata_cache_hit_rate',
+    help: 'Cache hit rate percentage'
+  })
+};
+</code></pre>
+
+<hr />
+<h2 id="security-considerations">Security Considerations</h2>
+<h3 id="data-security">Data Security</h3>
+<ul>
+<li><strong>No Sensitive Data Storage</strong>: Only business rules and metadata</li>
+<li><strong>Audit Logging</strong>: Log all authentication method determinations</li>
+<li><strong>Input Validation</strong>: Strict validation of all request parameters</li>
+<li><strong>Rate Limiting</strong>: Prevent abuse of service endpoints</li>
+</ul>
+<h3 id="compliance-and-governance">Compliance and Governance</h3>
+<ul>
+<li><strong>Rule Auditability</strong>: Track all rule changes and applications</li>
+<li><strong>Regulatory Compliance</strong>: Align with Singapore banking regulations</li>
+<li><strong>Data Governance</strong>: Maintain data lineage for authentication decisions</li>
+<li><strong>Change Management</strong>: Controlled updates to business rules</li>
+</ul>
+<hr />
+<h2 id="future-enhancements">Future Enhancements</h2>
+<h3 id="production-readiness">Production Readiness</h3>
+<ul>
+<li><strong>Database Integration</strong>: Persistent storage for business rules</li>
+<li><strong>Rule Management UI</strong>: Administrative interface for rule configuration</li>
+<li><strong>A/B Testing</strong>: Support for rule experimentation</li>
+<li><strong>Machine Learning</strong>: Dynamic auth method optimization</li>
+</ul>
+<h3 id="advanced-features">Advanced Features</h3>
+<ul>
+<li><strong>Multi-Market Support</strong>: Rules for different countries and currencies</li>
+<li><strong>Real-time Rule Updates</strong>: Hot reload of business rules</li>
+<li><strong>Advanced Analytics</strong>: Authentication method effectiveness analysis</li>
+<li><strong>Integration APIs</strong>: REST endpoints for external rule management</li>
+</ul>
+<h3 id="scalability-improvements">Scalability Improvements</h3>
+<ul>
+<li><strong>Distributed Caching</strong>: Redis cluster for rule caching</li>
+<li><strong>Rule Versioning</strong>: Support for multiple rule versions</li>
+<li><strong>Performance Optimization</strong>: Sub-millisecond rule evaluation</li>
+<li><strong>Load Balancing</strong>: Geographic distribution of rule evaluation </li>
+</ul>
+</div>
+
+</body>
+</html>

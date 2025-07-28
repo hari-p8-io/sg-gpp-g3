@@ -1,152 +1,334 @@
-# GPP G3 Initiative - Monorepo
+# G3 Payment Platform (GPPG3) - Singapore Payment Processing System
 
-A comprehensive monorepo housing multiple microservices for the GPP G3 initiative, built with TypeScript and Java.
+## 🏗️ **Project Overview**
 
-## Services Overview
+The Singapore G3 Payment Platform (GPPG3) is a **complete microservices-based payment processing system** designed for high-performance PACS message processing with intelligent routing based on account systems (VAM/MDZ/MEPS).
 
-### TypeScript Services
-- **fast-requesthandler-service** - Handles incoming requests and initial processing
-- **fast-enrichment-service** - Enriches request data with additional information
-- **fast-validation-service** - Validates request data and business rules
-- **fast-orchestrator-service** - Orchestrates the flow between different services
+## 🚀 **System Architecture**
 
-### Java Services
-- **fast-limitcheck-service** - Performs limit checks and validation
-- **fast-accounting-service** - Handles accounting and financial operations
-- **fast-vammediation-service** - VAM mediation service
-- **fast-mdzmediation-service** - MDZ mediation service
+### **Core Services**
+- **🎯 Enrichment Service** (50052) - **DIRECT ENTRY POINT** for all payment messages
+- **✅ Validation Service** (50053) - Message validation & Kafka publishing (PACS.003 only)
+- **🎛️ Orchestrator** (3004) - Intelligent routing based on account systems (dual topic consumer)
+- **🏦 Accounting Service** (8002) - Transaction processing
+- **⚖️ Limit Check Service** (3006) - Transaction limit validation
 
-## Repository Structure
+### **Supporting Services**
+- **🔍 Account Lookup** (50059) - Account system detection
+- **📊 Reference Data** (50060) - Authentication method lookup
+- **🔗 VAM/MDZ Mediation** - External system integration
 
-```
-├── fast-requesthandler-service/       # TypeScript service
-├── fast-enrichment-service/           # TypeScript service
-├── fast-validation-service/           # TypeScript service
-├── fast-orchestrator-service/         # TypeScript service
-├── fast-limitcheck-service/           # Java service (shell)
-├── fast-accounting-service/           # Java service (shell)
-├── fast-vammediation-service/         # Java service (shell)
-├── fast-mdzmediation-service/         # Java service (shell)
-├── package.json                       # Node.js workspace configuration
-├── pom.xml                           # Maven parent POM
-├── docs/
-└── shared/
-```
+## 🎯 **Key Features**
 
-## Prerequisites
+✅ **Direct Entry Architecture** - No request handler, enrichment service is the entry point  
+✅ **Conditional Message Routing** - PACS.003 via validation, PACS.008 direct to Kafka  
+✅ **Dual Topic Orchestration** - Unified processing from both `validated-messages` and `enriched-messages`  
+✅ **Intelligent Account System Detection** - VAM/MDZ/MEPS routing  
+✅ **Authentication Method Logic** - GROUPLIMIT, AFPTHENLIMIT, AFPONLY  
+✅ **Kafka Async Processing** - Reliable message queuing  
+✅ **gRPC High-Performance Communication** - Synchronous service calls  
+✅ **Comprehensive Testing** - End-to-end validation with Playwright
 
-### For TypeScript Services
-- Node.js 18+
-- npm or yarn
-- TypeScript
+## 🚀 **Quick Start**
 
-### For Java Services
-- Java 17+
-- Maven 3.8+
-- Spring Boot
-
-## Getting Started
-
-### Setup All Services
+### **1. Prerequisites**
 ```bash
-# Install dependencies for all TypeScript services
-npm run install:ts-services
-
-# Build all Java services
-npm run java:build
+# Install Node.js 18+ and Docker
+node --version  # Should be 18+
+docker --version
 ```
 
-### Individual Service Setup
-
-#### TypeScript Services
+### **2. Setup Project**
 ```bash
-cd [service-name]
+# Clone and install dependencies
+git clone <repository-url>
+cd GPPG3
 npm install
-npm run dev
+
+# Start infrastructure
+docker-compose up -d kafka zookeeper
+
+# Install all service dependencies
+npm run services:install
 ```
 
-#### Java Services
+### **3. Start Services**
 ```bash
-cd [service-name]
-mvn spring-boot:run
+# Start core services for development (no request handler needed)
+npm run start:fast-enrichment &    # Entry point service
+npm run start:fast-validation &    # For PACS.003 messages
+npm run start:fast-orchestrator &  # Dual topic consumer
+
+# Or use utilities scripts
+cd utilities
+./start-services.sh
 ```
 
-## Development
-
-### Running TypeScript Services
+### **4. Test the System**
 ```bash
-# Run all TypeScript services in development mode
-npm run dev
+# Run comprehensive tests
+cd utilities
+./comprehensive-test.sh
 
-# Run individual service
-cd fast-requesthandler-service
-npm run dev
+# Test specific flows
+./simple-vam-mdz-e2e-test.js
 ```
 
-### Running Java Services
+## 📁 **Project Structure**
+
+```
+GPPG3/
+├── 📄 README.md                           # This file
+├── 📄 package.json                        # Monorepo workspace configuration
+├── 🐳 docker-compose.yml                  # Service orchestration
+├── 📂 docs/                               # 📚 All documentation
+│   ├── 📂 guides/                         # Setup and technical guides
+│   ├── 📂 reports/                        # Implementation and test reports
+│   └── 📂 services/                       # Service-specific documentation
+├── 📂 utilities/                          # 🛠️ Development and testing tools
+├── 📂 fast-enrichment-service/            # 🎯 **ENTRY POINT** service (direct)
+├── 📂 fast-validation-service/            # ✅ Message validation (PACS.003 only)
+├── 📂 fast-orchestrator-service/          # 🎛️ Dual topic intelligent routing
+├── 📂 fast-accounting-service/            # 🏦 Transaction processing
+├── 📂 fast-limitcheck-service/            # ⚖️ Limit checking
+├── 📂 fast-accountlookup-service/         # 🔍 Account system detection
+├── 📂 fast-referencedata-service/         # 📊 Authentication method lookup
+├── 📂 fast-vammediation-service/          # 🔗 VAM system integration
+├── 📂 fast-mdzmediation-service/          # 🔗 MDZ system integration
+└── 📂 pw-core/                            # 🧪 Core testing framework
+```
+
+### **Available Scripts**
 ```bash
-# Build all Java services
-mvn clean install
+# Service management
+npm run services:install           # Install dependencies for all services
+npm run services:build             # Build all services
+npm run services:test              # Run tests for all services
 
-# Run individual service
-cd fast-limitcheck-service
-mvn spring-boot:run
+# Individual service commands (no request handler)
+npm run start:fast-enrichment      # Start enrichment service (entry point)
+npm run start:fast-validation      # Start validation service
+npm run start:fast-orchestrator    # Start orchestrator service
+
+# Testing and utilities
+npm run pw-core:build              # Build core testing framework
+npm run pw-core:test               # Run core tests
 ```
 
-### Service Ports
-- **fast-requesthandler-service**: 3001
-- **fast-enrichment-service**: 3002
-- **fast-validation-service**: 3003
-- **fast-orchestrator-service**: 3004
-- **fast-limitcheck-service**: 8001
-- **fast-accounting-service**: 8002
-- **fast-vammediation-service**: 8003
-- **fast-mdzmediation-service**: 8004
+### **Service Development**
+Each service follows a consistent structure:
+```
+fast-[service-name]/
+├── src/                    # TypeScript source code
+├── proto/                  # gRPC protocol definitions
+├── tests/                  # Playwright tests
+├── package.json           # Service dependencies
+├── README.md              # Service documentation
+├── Dockerfile             # Container configuration
+└── .env.example           # Environment variables
+```
 
-## Service Details
+## 📚 **Documentation**
 
-### TypeScript Services
-Each TypeScript service includes:
-- Express.js server with middleware
-- Health check endpoints
-- Request ID tracking
-- Error handling
-- Docker configuration
-- TypeScript configuration
+### **📂 Centralized Documentation in `docs/`**
+- **[docs/README.md](docs/README.md)** - Complete documentation index
+- **[docs/guides/](docs/guides/)** - Setup guides and technical documentation
+- **[docs/reports/](docs/reports/)** - Implementation status and test reports
+- **[docs/services/](docs/services/)** - Service-specific documentation
 
-### Java Services
-Each Java service includes:
-- Spring Boot application structure
-- Maven configuration
-- Health check endpoints via Spring Actuator
-- Basic service scaffolding (shell services)
+### **🛠️ Utilities & Testing**
+- **[utilities/README.md](utilities/README.md)** - Development tools and scripts
+- **[utilities/](utilities/)** - Testing scripts, monitoring tools, and utilities
 
-## Scripts
+## 🧪 **Testing**
 
-### Root Level Scripts
+### **Test Categories**
+1. **Unit Tests** - Individual service functionality
+2. **Integration Tests** - Service-to-service communication  
+3. **End-to-End Tests** - Complete message flow validation
+4. **Performance Tests** - Load testing and benchmarking
+
+### **Running Tests**
 ```bash
-# TypeScript services
-npm run build          # Build all TypeScript services
-npm run test           # Test all TypeScript services
-npm run dev            # Run all TypeScript services in dev mode
-npm run lint           # Lint all TypeScript services
+# Navigate to utilities for comprehensive testing
+cd utilities
 
-# Java services
-npm run java:build     # Build all Java services
-npm run java:test      # Test all Java services
-mvn clean install     # Direct Maven build
+# Run all tests
+./comprehensive-test.sh
+
+# Run specific test scenarios
+./simple-vam-mdz-e2e-test.js       # VAM/MDZ routing tests
+./test-limit-check-scenario.js     # Limit checking tests
 ```
 
-## Docker Support
-All services include Docker configurations for containerized deployment.
+## 🎯 **Message Flow**
 
-## Contributing
+### **Revised PACS Processing Flow**
+```
+1. Enrichment Service (50052) ← **DIRECT ENTRY** for all payment messages
+2. Account Lookup (50059) ← Determines VAM/MDZ system
+3. Reference Data (50060) ← Gets authentication method
+4. Conditional Routing:
+   - PACS.003 → Validation (50053) → Kafka (validated-messages) → Orchestrator (3004)
+   - PACS.008/PACS.007 → Kafka (enriched-messages) → Orchestrator (3004)
+5. Unified Orchestration → Accounting (8002) + Limit Check (3006) + VAM/MDZ Mediation
+```
 
-1. Follow the established code style for each language
-2. Update tests for any new functionality
-3. Ensure all services build successfully
-4. Update documentation as needed
+### **Account System Logic**
+- **VAM System**: Account numbers starting with `999` or containing `VAM`
+- **MDZ System**: All other account numbers  
+- **Authentication**: GROUPLIMIT for government accounts, AFPTHENLIMIT for others
 
-## License
+### **Kafka Topic Strategy**
+- **`validated-messages`**: PACS.003 messages after validation
+- **`enriched-messages`**: PACS.008/PACS.007 messages directly from enrichment
+- **`accounting-messages`**: Messages for accounting processing
+- **`limitcheck-messages`**: Messages for limit checking (GROUPLIMIT only)
 
-This project is proprietary to the GPP G3 initiative. 
+### **Service Ports**
+- **50052**: Enrichment Service (gRPC) - **ENTRY POINT**
+- **50053**: Validation Service (gRPC) - PACS.003 validation only  
+- **50059**: Account Lookup Service (gRPC)
+- **50060**: Reference Data Service (gRPC)
+- **3004**: Orchestrator Service (HTTP) - Dual topic consumer
+- **3005**: VAM Mediation Service (HTTP)
+- **3006**: Limit Check Service (HTTP)
+- **8002**: Accounting Service (HTTP)
+The following sequence diagram shows the complete end-to-end flow with **conditional routing** based on message type:
+
+```mermaid
+sequenceDiagram
+    participant Client as External Client
+    participant ES as Enrichment Service<br/>(50052 - Entry Point)
+    participant AL as Account Lookup<br/>(50059)
+    participant RD as Reference Data<br/>(50060)
+    participant VS as Validation Service<br/>(50053)
+    participant K1 as Kafka<br/>(validated-messages)
+    participant K2 as Kafka<br/>(enriched-messages)
+    participant OS as Orchestrator<br/>(3004)
+    participant AS as Accounting Service<br/>(8002)
+    participant LC as Limit Check<br/>(3006)
+    participant VAM as VAM Mediation<br/>(3005)
+    participant MDZ as MDZ Mediation<br/>(8004)
+
+    Note over Client,MDZ: Revised Architecture - Direct Enrichment Entry
+
+    Client->>+ES: 1. Direct Message (gRPC)<br/>PACS.008, PACS.007, or PACS.003
+    
+    Note over ES,RD: Enrichment Phase (Common)
+    ES->>+AL: 2. LookupAccount(accountNumber)
+    AL-->>-ES: 3. AccountInfo(system: VAM/MDZ, status: ACTIVE)
+    
+    ES->>+RD: 4. GetAuthMethod(accountInfo)
+    RD-->>-ES: 5. AuthMethod(GROUPLIMIT/AFPTHENLIMIT)
+    
+    Note over ES,MDZ: Conditional Routing Based on Message Type
+    
+    alt PACS.003 Message
+        ES->>+VS: 6a. ValidateMessage(enrichedMessage)
+        Note over VS,K1: Validation & Publishing
+        VS->>VS: 7a. XSD Validation
+        VS->>K1: 8a. Publish to "validated-messages"
+        VS-->>-ES: 9a. ValidationResult(SUCCESS)
+        ES-->>-Client: 10a. ProcessingResponse(messageId, status: ACCEPTED)
+        
+        Note over K1,MDZ: Asynchronous Processing via Validation Flow
+        K1->>+OS: 11a. Consume "validated-messages" (PACS.003)
+    else PACS.008 Message
+        ES->>K2: 6b. Publish to "enriched-messages"
+        ES-->>-Client: 7b. ProcessingResponse(messageId, status: ACCEPTED)
+        
+        Note over K2,MDZ: Asynchronous Processing via Direct Flow
+        K2->>+OS: 8b. Consume "enriched-messages" (PACS.008)
+    end
+    
+    Note over OS,MDZ: Unified Orchestration Logic (Same for Both Flows)
+    
+    alt VAM Account System
+        OS->>+AS: 12a. ProcessTransaction(message)
+        AS-->>-OS: 13a. TransactionResult(SUCCESS)
+        
+        alt GROUPLIMIT Auth Method
+            OS->>+LC: 14a. CheckLimits(transactionData)
+            LC-->>-OS: 15a. LimitResult(APPROVED)
+        end
+        
+        OS->>+VAM: 16a. SendToVAM(processedMessage)
+        VAM-->>-OS: 17a. VAMResponse(SUCCESS)
+        
+    else MDZ Account System
+        OS->>+AS: 12b. ProcessTransaction(message)
+        AS-->>-OS: 13b. TransactionResult(SUCCESS)
+        
+        alt GROUPLIMIT Auth Method
+            OS->>+LC: 14b. CheckLimits(transactionData)
+            LC-->>-OS: 15b. LimitResult(APPROVED)
+        end
+        
+        OS->>+MDZ: 16b. SendToMDZ(processedMessage)
+        MDZ-->>-OS: 17b. MDZResponse(SUCCESS)
+    end
+    
+    Note over OS,Client: Completion Flow (Unified)
+    OS->>K1: 18. Publish completion to "pacs-response-messages"
+    
+    Note over Client,MDZ: End-to-End Processing Complete
+```
+
+### **🔄 Processing Phases Explained**
+
+1. **🎯 Direct Entry Phase** (Steps 1-5)
+   - Client sends messages directly to Enrichment Service (no request handler)
+   - Enrichment Service handles account lookup and reference data retrieval
+   - Same enrichment logic for PACS.003, PACS.008, and PACS.007
+
+2. **🚦 Conditional Routing Phase** (Steps 6-11)
+   - **PACS.003**: Enrichment → Validation → Kafka (`validated-messages`) → Orchestrator
+   - **PACS.008/PACS.007**: Enrichment → Kafka (`enriched-messages`) → Orchestrator
+   - Client receives immediate response after routing decision
+
+3. **⚡ Unified Orchestration Phase** (Steps 12-17)
+   - Orchestrator processes both message types with the same business logic
+   - VAM/MDZ routing based on account system (not message type)
+   - Authentication method handling remains consistent
+   - Accounting and limit checking apply to both flows
+
+4. **✅ Completion Phase** (Step 18)
+   - Single completion flow regardless of entry path
+   - PACS.002 response generation and publishing
+
+## 🔧 **Configuration**
+
+### **Environment Variables**
+Key configuration files:
+- **`.env.example`** - Template for environment variables
+- **`docker-compose.yml`** - Service orchestration configuration
+- **`package.json`** - Workspace and script configuration
+
+### **Service Ports**
+- **50051**: Request Handler (gRPC)
+- **50052**: Enrichment Service (gRPC)  
+- **50053**: Validation Service (gRPC)
+- **50059**: Account Lookup Service (gRPC)
+- **50060**: Reference Data Service (gRPC)
+- **3004**: Orchestrator Service (HTTP)
+- **3005**: VAM Mediation Service (HTTP)
+- **3006**: Limit Check Service (HTTP)
+- **8002**: Accounting Service (HTTP)
+- **9092**: Kafka Broker
+
+## 🤝 **Contributing**
+
+1. **Setup Development Environment** - Follow Quick Start guide
+2. **Review Documentation** - Check `docs/` for comprehensive guides
+3. **Run Tests** - Use `utilities/` scripts for testing
+4. **Follow Service Structure** - Maintain consistent patterns across services
+5. **Update Documentation** - Keep docs current with changes
+
+## 📄 **License**
+
+This project is licensed under the ISC License - see the [LICENSE](LICENSE) file for details.
+
+---
+
+**🚀 Ready to start? Check out the [Quick Start](#-quick-start) guide or explore the [documentation](docs/README.md)!** 

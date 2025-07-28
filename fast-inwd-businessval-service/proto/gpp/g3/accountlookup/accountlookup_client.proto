@@ -1,0 +1,49 @@
+syntax = "proto3";
+
+package gpp.g3.accountlookup;
+
+import "gpp/g3/enrichment/enrichment_service.proto";
+
+service AccountLookupService {
+  // Lookup account information and return enrichment data
+  rpc LookupAccount(AccountLookupRequest) returns (AccountLookupResponse);
+  
+  // Health check for the account lookup service
+  rpc HealthCheck(HealthCheckRequest) returns (HealthCheckResponse);
+}
+
+message AccountLookupRequest {
+  string message_id = 1;               // UUID for tracking
+  string puid = 2;                     // G3I identifier
+  string cdtr_acct_id = 3;             // Extracted CdtrAcct ID
+  string message_type = 4;             // PACS message type for context
+  map<string, string> metadata = 5;    // Additional lookup context
+  int64 timestamp = 6;                 // Request timestamp
+}
+
+message AccountLookupResponse {
+  string message_id = 1;                            // Echo back UUID
+  string puid = 2;                                  // Echo back G3I identifier
+  bool success = 3;                                 // Whether lookup was successful
+  string error_message = 4;                         // Error details if success = false
+  string error_code = 5;                            // Categorized error code
+  gpp.g3.enrichment.EnrichmentData enrichment_data = 6; // Full enrichment data
+  int64 processed_at = 7;                          // When lookup completed
+  string lookup_source = 8;                        // Source of lookup (STUB, CACHE, DATABASE)
+}
+
+message HealthCheckRequest {
+  string service = 1;
+}
+
+message HealthCheckResponse {
+  enum ServingStatus {
+    UNKNOWN = 0;
+    SERVING = 1;
+    NOT_SERVING = 2;
+    SERVICE_UNKNOWN = 3;
+  }
+  ServingStatus status = 1;
+  string message = 2;
+  int64 timestamp = 3;
+} 

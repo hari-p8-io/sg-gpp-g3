@@ -1,0 +1,40 @@
+{
+  "name": "fast-referencedata-service",
+  "version": "1.0.0",
+  "description": "Fast Reference Data Service for G3 Payment Platform - handles reference data lookup for authentication methods",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "dev": "ts-node src/index.ts",
+    "start": "node dist/index.js",
+    "test": "playwright test",
+    "test:debug": "playwright test --debug",
+    "proto": "grpc_tools_node_protoc --js_out=import_style=commonjs,binary:./src/proto --ts_out=grpc_js:./src/proto --grpc_out=grpc_js:./src/proto -I ./proto proto/*.proto"
+  },
+  "keywords": [
+    "grpc",
+    "referencedata",
+    "authentication",
+    "g3",
+    "payment",
+    "singapore"
+  ],
+  "author": "GPP G3 Team",
+  "license": "MIT",
+  "dependencies": {
+    "@grpc/grpc-js": "^1.9.0",
+    "@grpc/proto-loader": "^0.7.0",
+    "uuid": "^9.0.0",
+    "winston": "^3.8.0",
+    "dotenv": "^16.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^18.0.0",
+    "@types/uuid": "^9.0.0",
+    "@playwright/test": "^1.40.0",
+    "grpc-tools": "^1.12.0",
+    "grpc_tools_node_protoc_ts": "^5.3.0",
+    "typescript": "^4.9.0",
+    "ts-node": "^10.9.0"
+  }
+} 

@@ -1,0 +1,66 @@
+syntax = "proto3";
+
+package gpp.g3.ddivalidation;
+
+service DDIValidationService {
+  rpc ValidateEnrichedMessage(ValidateEnrichedMessageRequest) returns (ValidationResponse);
+  rpc HealthCheck(HealthCheckRequest) returns (HealthCheckResponse);
+}
+
+message ValidateEnrichedMessageRequest {
+  string message_id = 1;
+  string puid = 2;
+  string xml_payload = 3;
+  EnrichmentData enrichment_data = 4;
+  string message_type = 5;
+  map<string, string> metadata = 6;
+}
+
+message EnrichmentData {
+  string received_acct_id = 1;
+  int32 lookup_status_code = 2;
+  string normalized_acct_id = 3;
+  PhysicalAccountInfo physical_acct_info = 4;
+  map<string, string> additional_data = 5;
+}
+
+message PhysicalAccountInfo {
+  string acct_id = 1;
+  string acct_type = 2;
+  string acct_status = 3;
+  string bank_code = 4;
+  string branch_code = 5;
+}
+
+message ValidationResponse {
+  bool success = 1;
+  repeated string errors = 2;
+  string processed_at = 3;
+  bool kafka_published = 4;
+  MandateValidationResult mandate_validation = 5;
+}
+
+message MandateValidationResult {
+  bool mandate_required = 1;
+  bool mandate_valid = 2;
+  string mandate_reference = 3;
+  string mandate_status = 4;
+  repeated string mandate_errors = 5;
+}
+
+message HealthCheckRequest {
+  string service = 1;
+}
+
+message HealthCheckResponse {
+  enum ServingStatus {
+    UNKNOWN = 0;
+    SERVING = 1;
+    NOT_SERVING = 2;
+    SERVICE_UNKNOWN = 3;
+  }
+  ServingStatus status = 1;
+  string message = 2;
+  int64 timestamp = 3;
+  map<string, string> dependencies = 4;
+} 

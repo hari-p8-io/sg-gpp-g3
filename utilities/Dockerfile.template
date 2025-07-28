@@ -1,0 +1,127 @@
+# =============================================================================
+# Multi-Stage Build Template for FAST Services
+# Optimized for security, size, and deployment efficiency
+# =============================================================================
+
+# Template Variables (replace when using):
+# ${SERVICE_NAME} - e.g., fast-requesthandler-service
+# ${SERVICE_PORT} - e.g., 50051
+# ${GRPC_SERVICE} - e.g., gpp.g3.requesthandler.MessageHandler
+# ${HEALTH_CHECK_TYPE} - grpc or http
+# ${HTTP_PORT} - if HTTP health check needed
+
+# -----------------------------------------------------------------------------
+# Stage 1: Dependencies - Install and cache dependencies
+# -----------------------------------------------------------------------------
+FROM node:20-alpine AS dependencies
+
+WORKDIR /app
+
+# Install security updates and required packages
+RUN apk add --no-cache \
+    dumb-init \
+    && apk upgrade
+
+# Copy package files for dependency installation
+COPY package*.json ./
+
+# Install ALL dependencies (including devDependencies for building)
+RUN npm ci --ignore-scripts && npm cache clean --force
+
+# -----------------------------------------------------------------------------
+# Stage 2: Builder - Build the application
+# -----------------------------------------------------------------------------
+FROM node:20-alpine AS builder
+
+WORKDIR /app
+
+# Copy installed dependencies from previous stage
+COPY --from=dependencies /app/node_modules ./node_modules
+COPY --from=dependencies /app/package*.json ./
+
+# Copy source code and configuration
+COPY . .
+
+# Generate protocol buffers (if service uses gRPC)
+RUN if [ -f "package.json" ] && grep -q "proto:generate" package.json; then \
+        npm run proto:generate; \
+    fi
+
+# Build the TypeScript application
+RUN npm run build
+
+# Prune to production dependencies only
+RUN npm ci --only=production --ignore-scripts && npm cache clean --force
+
+# -----------------------------------------------------------------------------
+# Stage 3: Runtime Tools - Prepare runtime utilities
+# -----------------------------------------------------------------------------
+FROM alpine:3.19 AS tools
+
+# Install tools needed for runtime
+RUN apk add --no-cache wget ca-certificates curl
+
+# Download grpc_health_probe (for gRPC services)
+RUN wget -qO /tmp/grpc_health_probe \
+    https://github.com/grpc-ecosystem/grpc-health-probe/releases/download/v0.4.22/grpc_health_probe-linux-amd64 && \
+    chmod +x /tmp/grpc_health_probe
+
+# -----------------------------------------------------------------------------
+# Stage 4: Production - Minimal runtime image
+# -----------------------------------------------------------------------------
+FROM node:20-alpine AS production
+
+# Metadata (customize per service)
+LABEL maintainer="GPP G3 Team"
+LABEL service="${SERVICE_NAME}"
+LABEL version="1.0.0"
+LABEL description="FAST microservice for GPP G3 platform"
+
+WORKDIR /app
+
+# Install only essential runtime packages
+RUN apk add --no-cache \
+    dumb-init \
+    ca-certificates \
+    curl \
+    && apk upgrade \
+    && rm -rf /var/cache/apk/*
+
+# Create non-root user with specific UID/GID for security
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S nodejs -u 1001 -G nodejs
+
+# Copy runtime tools
+COPY --from=tools /tmp/grpc_health_probe /usr/local/bin/grpc_health_probe
+
+# Copy production dependencies and built application
+COPY --from=builder --chown=nodejs:nodejs /app/node_modules ./node_modules
+COPY --from=builder --chown=nodejs:nodejs /app/dist ./dist
+COPY --from=builder --chown=nodejs:nodejs /app/package*.json ./
+
+# Create necessary directories with proper ownership
+RUN mkdir -p /app/logs /app/tmp && \
+    chown -R nodejs:nodejs /app
+
+# Switch to non-root user
+USER nodejs
+
+# Expose ports (customize per service)
+EXPOSE ${SERVICE_PORT}
+
+# Health check (customize per service type)
+# For gRPC services:
+HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
+    CMD grpc_health_probe -addr=localhost:${SERVICE_PORT} -service=${GRPC_SERVICE} || exit 1
+
+# For HTTP services (alternative):
+# HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
+#     CMD curl -f http://localhost:${HTTP_PORT}/health || exit 1
+
+# Set production environment
+ENV NODE_ENV=production
+ENV NODE_OPTIONS="--max-old-space-size=512"
+
+# Use dumb-init for proper signal handling
+ENTRYPOINT ["dumb-init", "--"]
+CMD ["node", "dist/index.js"] 

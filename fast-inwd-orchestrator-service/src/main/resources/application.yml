@@ -1,0 +1,167 @@
+server:
+  port: 8080
+  servlet:
+    context-path: /
+
+spring:
+  application:
+    name: fast-inwd-orchestrator-service
+  
+  profiles:
+    active: dev
+  
+  # Kafka Configuration
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    consumer:
+      group-id: ${KAFKA_CONSUMER_GROUP_ID:fast-inwd-orchestrator-group}
+      auto-offset-reset: ${KAFKA_AUTO_OFFSET_RESET:earliest}
+      enable-auto-commit: true
+      auto-commit-interval: 1000
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      acks: all
+      retries: 3
+  
+  # Google Cloud Spanner Configuration
+  cloud:
+    gcp:
+      project-id: ${GCP_PROJECT_ID:fast-payments-project}
+      spanner:
+        instance-id: ${SPANNER_INSTANCE_ID:fast-payments-instance}
+        database: ${SPANNER_DATABASE_ID:orchestrator-db}
+  
+  # Jackson Configuration
+  jackson:
+    default-property-inclusion: non_null
+    time-zone: UTC
+    date-format: yyyy-MM-dd'T'HH:mm:ss.SSS'Z'
+
+# Application-specific configuration
+app:
+  kafka:
+    topics:
+      enriched-messages: ${KAFKA_TOPIC_ENRICHED_MESSAGES:enriched-messages}
+      accounting: ${KAFKA_TOPIC_ACCOUNTING:json-accounting-messages}
+      vammediation: ${KAFKA_TOPIC_VAM_MEDIATION:json-vammediation-messages}
+      limitcheck: ${KAFKA_TOPIC_LIMIT_CHECK:json-limitcheck-messages}
+      accounting-responses: ${KAFKA_TOPIC_ACCOUNTING_RESPONSES:accounting-response-messages}
+      vammediation-responses: ${KAFKA_TOPIC_VAM_MEDIATION_RESPONSES:vammediation-response-messages}
+      limitcheck-responses: ${KAFKA_TOPIC_LIMIT_CHECK_RESPONSES:limitcheck-response-messages}
+  
+  # Configurable CTI and DDI workflows
+  workflows:
+    cti:
+      name: "credit-transfer-inward"
+      description: "Credit Transfer Inward workflow"
+      timeoutMinutes: 30
+      maxRetries: 3
+      steps:
+        - name: "deduplication-check"
+          service: "DeduplicationService"
+          description: "Check for duplicate messages"
+          required: true
+        - name: "pacs-to-json-transform"
+          service: "MessageTransformationService"
+          description: "Transform PACS/CAMT XML to JSON"
+          required: true
+        - name: "publish-to-downstream"
+          service: "JsonPublishingService"
+          description: "Publish JSON to downstream services"
+          required: true
+          targets: ["accounting", "vammediation", "limitcheck"]
+    
+    ddi:
+      name: "direct-debit-inward"
+      description: "Direct Debit Inward workflow"
+      timeoutMinutes: 45
+      maxRetries: 3
+      steps:
+        - name: "deduplication-check"
+          service: "DeduplicationService"
+          description: "Check for duplicate messages"
+          required: true
+        - name: "pacs-to-json-transform"
+          service: "MessageTransformationService"
+          description: "Transform PACS XML to JSON"
+          required: true
+        - name: "publish-to-downstream"
+          service: "JsonPublishingService"
+          description: "Publish JSON to downstream services"
+          required: true
+          targets: ["accounting", "vammediation", "limitcheck"]
+
+# Logging Configuration
+logging:
+  level:
+    com.gpp.g3.orchestrator: ${LOG_LEVEL:INFO}
+    org.springframework.kafka: ${KAFKA_LOG_LEVEL:WARN}
+    com.google.cloud.spanner: ${SPANNER_LOG_LEVEL:WARN}
+    org.springframework.cloud.gcp: ${GCP_LOG_LEVEL:WARN}
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level [%X{traceId:-},%X{spanId:-}] %logger{36} - %msg%n"
+
+# Actuator Configuration
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: always
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+
+# Environment-specific profiles
+---
+spring:
+  config:
+    activate:
+      on-profile: dev
+
+logging:
+  level:
+    com.gpp.g3.orchestrator: DEBUG
+    org.springframework.kafka: INFO
+
+---
+spring:
+  config:
+    activate:
+      on-profile: test
+
+spring:
+  kafka:
+    consumer:
+      auto-offset-reset: earliest
+      group-id: fast-inwd-orchestrator-test-group
+
+app:
+  kafka:
+    topics:
+      enriched-messages: test-enriched-messages
+      accounting: test-json-accounting-messages
+      vammediation: test-json-vammediation-messages
+      limitcheck: test-json-limitcheck-messages
+
+---
+spring:
+  config:
+    activate:
+      on-profile: prod
+
+logging:
+  level:
+    com.gpp.g3.orchestrator: INFO
+    org.springframework.kafka: WARN
+
+spring:
+  kafka:
+    consumer:
+      auto-offset-reset: latest 

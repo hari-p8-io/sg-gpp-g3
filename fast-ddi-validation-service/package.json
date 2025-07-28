@@ -1,0 +1,43 @@
+{
+  "name": "fast-ddi-validation-service",
+  "version": "1.0.0",
+  "description": "Fast DDI validation service for PACS message validation and Kafka publishing",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "ts-node src/index.ts",
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "test:debug": "playwright test --debug",
+    "test:e2e": "playwright test",
+    "clean": "rm -rf dist",
+    "lint": "eslint src/**/*.ts",
+    "format": "prettier --write src/**/*.ts"
+  },
+  "dependencies": {
+    "@grpc/grpc-js": "^1.11.3",
+    "@grpc/proto-loader": "^0.7.13",
+    "axios": "^1.6.0",
+    "kafkajs": "^2.2.4",
+    "uuid": "^9.0.1",
+    "moment-timezone": "^0.5.45",
+    "fast-xml-parser": "^4.4.1",
+    "joi": "^17.13.3",
+    "zod": "^3.23.8",
+    "@gpp/pw-core": "^1.0.0",
+    "@gpp/fast-core": "^1.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.5.1",
+    "@types/uuid": "^9.0.8",
+    "@playwright/test": "^1.47.0",
+    "typescript": "^5.5.4",
+    "ts-node": "^10.9.2",
+    "eslint": "^8.57.0",
+    "prettier": "^3.3.3"
+  },
+  "keywords": ["grpc", "ddi-validation", "kafka", "pacs", "fast"],
+  "author": "GPP G3 Team",
+  "license": "MIT"
+} 

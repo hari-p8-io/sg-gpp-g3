@@ -1,0 +1,21 @@
+{
+  "name": "fast-inwd-orchestrator-service-e2e",
+  "version": "1.0.0",
+  "description": "End-to-end tests for fast-inwd-orchestrator-service",
+  "main": "index.js",
+  "scripts": {
+    "test": "playwright test",
+    "test:debug": "playwright test --debug",
+    "docker:up": "docker-compose up -d",
+    "docker:down": "docker-compose down"
+  },
+  "dependencies": {
+    "@playwright/test": "^1.40.0",
+    "kafkajs": "^2.2.4",
+    "axios": "^1.6.2",
+    "uuid": "^9.0.1",
+    "wait-for-expect": "^3.0.2",
+    "xml2js": "^0.6.2",
+    "dotenv": "^16.3.1"
+  }
+} 
